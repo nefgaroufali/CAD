@@ -19,7 +19,7 @@
 #define BLU  "\x1B[34m"		// Blue Color
 #define MAG  "\x1B[35m"		// Magenta Color
 #define CYN  "\x1B[36m"		// Cyan Color
-#define WHT "\x1B[37m"	// White Color
+#define WHT  "\x1B[37m"	    // White Color
 
 
 
@@ -100,14 +100,14 @@ int main(int argc, char* argv[])
                 }
             }
         }
-        else // run the tcl //
+        else // TCL commands //
 		{	
 			// evaluate tcl commands //
 			tcl_res = Tcl_Eval(interp_nef, command);
 			if (tcl_res == TCL_ERROR)
 			{
 				fprintf(stderr, RED"!!! Error !!!\n"NRM);
-                // returns the result for interp_nef as a string if there is one //
+                // returns the result for interp_nef as a string //
 				if (*Tcl_GetStringResult(interp_nef) != '\0')
 				{
 		  		 	printf("%s\n", Tcl_GetStringResult(interp_nef));
@@ -117,7 +117,7 @@ int main(int argc, char* argv[])
 			} 
 			else if (tcl_res == TCL_OK)
 			{
-				// returns the result for interp_nef as a string if there is one //
+				// returns the result for interp_nef as a string //
 				if (*Tcl_GetStringResult(interp_nef) != '\0')
 				{
 		  			printf("%s\n", Tcl_GetStringResult(interp_nef));

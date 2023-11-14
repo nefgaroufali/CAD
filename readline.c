@@ -7,6 +7,14 @@
 
 #include "readline.h" 
 
+#define NRM  "\x1B[0m"		// Normal Color
+#define RED  "\x1B[31m"		// Red Color
+#define GRN  "\x1B[32m"		// Green Color
+#define YEL  "\x1B[33m"		// Yellow Color
+#define BLU  "\x1B[34m"		// Blue Color
+#define MAG  "\x1B[35m"		// Magenta Color
+#define CYN  "\x1B[36m"		// Cyan Color
+#define WHT  "\x1B[37m"	    // White Color
 
 char *commands_list[]= {
 	// my commands //
@@ -52,17 +60,17 @@ char **custom_completer(const char *text, int start, int end)
 
 	match = (char **)NULL;
 
-	// detect if the word to be completed is a command ( word at start of line)
+	// detect if the word to be completed is a command (word at start of line)
 	// or it is the name of a file in current directory 
 	if (!start) {
 		match = rl_completion_matches(text, tab_generator);
 	}
+	
 	// if null then call default readline //
 	return match;
 }
 
-// generate command for tab completetion, use state to find out if //
-// we need to start from scratch or just the top of the list //
+// generate command for tab completetion //
 char *tab_generator(const char *text, int state)
 {
 	// index is static in order to keep state //
@@ -84,14 +92,13 @@ char *tab_generator(const char *text, int state)
 	{
 		index_list++;
 
-		// should a much be found , return it //
+		// if match //
 		if ( strncmp(name, text, length) == 0 ) 
 		{
-			// if found, return string //
+			// return the matched string //
 			return strdup(name);
 		}
 	}
-	//free (name);
-	// return NULL when reached the end //
+
 	return NULL;
 }
