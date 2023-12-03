@@ -411,8 +411,22 @@ void print_gatepins_hash_table(struct gatepins_hash_table* ht)
         while(gatepin != NULL)
         {
             printf("Gatepin name: %s\n", gatepin->gatepin_name);
-            printf("Gatepin component: %s\n", gatepin->component->comp_name);
-            printf("Gatepin lib cell: %s\n", gatepin->lib_cell->lib_cell_name);
+            if(gatepin->component != NULL)
+            {
+                printf("Gatepin component: %s\n", gatepin->component->comp_name);
+            }
+            else
+            {
+                printf("Gatepin component: NULL\n");
+            }
+            if(gatepin->lib_cell != NULL)
+            {
+                printf("Gatepin lib cell: %s\n", gatepin->lib_cell->lib_cell_name);
+            }
+            else
+            {
+                printf("Gatepin lib cell: NULL\n");
+            }
             printf("Gatepin io: %d\n", gatepin->io);
             printf("\n");
             gatepin = gatepin->next;
@@ -455,29 +469,22 @@ int make_data_structures(char** tokens, int count, int flag)
     struct gatepins** gatepins_array = NULL;
     struct gatepins** connections = NULL;
     struct lib_hash* lib_cell;
-    struct component* comp;
+    struct component* comp = NULL;
     int i=13;
     int j=0;
+    int k= count - 7;
+    int l = 7;
+    int length_function = 0;
 
 
     if(flag == 0)
     {
         // allocate memory for the component name //
         comp_name = malloc(strlen(tokens[1]) + 1);
-        if(comp_name == NULL)
-        {
-            printf("Error! Not enough memory.\n");
-            exit(EXIT_FAILURE);
-        }
         strcpy(comp_name, tokens[1]);
 
         // allocate memory for the library cell name //
         lib_cell_name = malloc(strlen(tokens[3]) + 1);
-        if(lib_cell_name == NULL)
-        {
-            printf("Error! Not enough memory.\n");
-            exit(EXIT_FAILURE);
-        }
         strcpy(lib_cell_name, tokens[3]);
         
         // create the library cell // 
@@ -485,39 +492,20 @@ int make_data_structures(char** tokens, int count, int flag)
 
         // allocate memory for the gatepin name //
         gatepin_name = malloc(strlen(tokens[11]) + strlen(tokens[12]) + 1);
-        if(gatepin_name == NULL)
-        {
-            printf("Error! Not enough memory.\n");
-            exit(EXIT_FAILURE);
-        }
         gatepin_name = strcpy(gatepin_name, tokens[11]);
         gatepin_name = strcat(gatepin_name, tokens[12]);
 
         // allocate memory for the gatepins array - This is the array for the component //
         gatepins_array = malloc(sizeof(struct gatepins*) * HASH_DEPTH);
-        if(gatepins_array == NULL)
-        {
-            printf("Error! Not enough memory.\n");
-            exit(EXIT_FAILURE);
-        }
 
         // allocate memory for the connections array - This is the array for the component //
         connections = malloc(sizeof(struct gatepins*) * HASH_DEPTH);
-        if(connections == NULL)
-        {
-            printf("Error! Not enough memory.\n");
-            exit(EXIT_FAILURE);
-        }
-        
+
         // allocate memory for the connections names array - This is a temp array to save the names of the connections //
         connections_names = malloc(sizeof(char*) * HASH_DEPTH);
-        if(connections_names == NULL)
-        {
-            printf("Error! Not enough memory.\n");
-            exit(EXIT_FAILURE);
-        }
 
         // create the gatepin output and store it to the first position of the gatepins array //
+        gatepins_array[0] = malloc(sizeof(struct gatepins));
         gatepins_array[0] = create_gatepins(gatepin_name,NULL,NULL,1);
         gatepins_array[0]->lib_cell = lib_cell; // the lib cell of the output gatepin is the lib cell of the component //
 
@@ -525,9 +513,10 @@ int make_data_structures(char** tokens, int count, int flag)
         for(i=13; i<count; i=i+2)
         {   
             connections_names[j] = malloc(strlen(tokens[i]) + strlen(tokens[i+1]) + 1);
-            connections_names[j] = strcpy(gatepin_name, tokens[i]);
-            connections_names[j] = strcat(gatepin_name, tokens[i+1]);
+            connections_names[j] = strcpy(connections_names[j], tokens[i]);
+            connections_names[j] = strcat(connections_names[j], tokens[i+1]);
 
+            connections[j] = malloc(sizeof(struct gatepins));
             connections[j] = create_gatepins(connections_names[j],NULL,NULL,0);
             j++;
         }
@@ -559,8 +548,18 @@ int make_data_structures(char** tokens, int count, int flag)
         }
 
         // allocate memory for the function name //
-        function = malloc(strlen(tokens[7]) + 1);
+        for(i=7; i<count; i++)
+        {
+            length_function = length_function + strlen(tokens[i]);
+        }
+
+        function = malloc(length_function + 1);
         function = strcpy(function, tokens[7]);
+        for(i=8; i<count; i++)
+        {
+            function = strcat(function, tokens[i]);
+        }
+        
 
         // allocate memory for the pins array //
         pins = malloc(sizeof(char*) * HASH_DEPTH);
@@ -652,6 +651,7 @@ struct component* create_component(char* comp_name, struct gatepins** gatepins_a
 {
     // variables //
     struct component* comp;
+    int i=0;
 
     // search if the component already exists in the hash table //
     comp = find_component(comp_name);
@@ -681,10 +681,23 @@ struct component* create_component(char* comp_name, struct gatepins** gatepins_a
     strcpy(comp->comp_name, comp_name);
 
     // assign the gatepins_array and connections pointers directly //
-    comp->gatepins_array = gatepins_array;
-    comp->connections = connections;
+    comp->gatepins_array = malloc(sizeof(struct gatepins*) * HASH_DEPTH);
+    while(gatepins_array[i] != NULL)
+    {
+        comp->gatepins_array[i] = gatepins_array[i];
+        i++;
+    }
+    comp->connections = malloc(sizeof(struct gatepins*) * HASH_DEPTH);
+    
+    i=0;
+    while(connections[i] != NULL)
+    {
+        comp->connections[i] = connections[i];
+        i++;
+    }
 
     // assign the lib_cell pointer directly //
+    comp->lib_cell = malloc(sizeof(struct lib_hash));
     comp->lib_cell = lib_cell;
 
     insert_component(comp);
@@ -734,7 +747,9 @@ struct gatepins* create_gatepins(char* gatepin_name, struct component* component
     strcpy(gatepin->gatepin_name, gatepin_name);
 
     // assign the component and lib_cell pointers directly //
+    gatepin->component = malloc(sizeof(struct component));
     gatepin->component = component;
+    gatepin->lib_cell = malloc(sizeof(struct lib_hash));
     gatepin->lib_cell = lib_cell;
 
     // copy the io //
@@ -762,32 +777,13 @@ struct lib_hash* create_lib_hash(char* lib_cell_name, char* function, char** pin
 
     // if the library cell does not exist, create it //
     lib_cell = malloc(sizeof(struct lib_hash));
-    if(lib_cell == NULL)
-    {
-        printf("Error! Not enough memory.\n");
-        exit(EXIT_FAILURE);
-    }
-
-    // allocate memory for the library cell name //
     lib_cell->lib_cell_name = malloc(strlen(lib_cell_name) + 1);
-    if(lib_cell->lib_cell_name == NULL)
-    {
-        printf("Error! Not enough memory.\n");
-        exit(EXIT_FAILURE);
-    }
-    // copy the library cell name //
     strcpy(lib_cell->lib_cell_name, lib_cell_name);
 
     // allocate memory for the function //
     if(function != NULL)
     {
         lib_cell->function = malloc(strlen(function) + 1);
-        if(lib_cell->function == NULL)
-        {
-            printf("Error! Not enough memory.\n");
-            exit(EXIT_FAILURE);
-        }
-        // copy the function //
         strcpy(lib_cell->function, function);
     }
     else
@@ -800,20 +796,10 @@ struct lib_hash* create_lib_hash(char* lib_cell_name, char* function, char** pin
     if(pins != NULL)
     {
         lib_cell->pins = malloc(sizeof(char*) * HASH_DEPTH);
-        if(lib_cell->pins == NULL)
-        {
-            printf("Error! Not enough memory.\n");
-            exit(EXIT_FAILURE);
-        }
         // copy the pins //
         for(i = 0; i < HASH_DEPTH; i++)
         {
             lib_cell->pins[i] = malloc(strlen(pins[i]) + 1);
-            if(lib_cell->pins[i] == NULL)
-            {
-                printf("Error! Not enough memory.\n");
-                exit(EXIT_FAILURE);
-            }
             strcpy(lib_cell->pins[i], pins[i]);
         }
     }

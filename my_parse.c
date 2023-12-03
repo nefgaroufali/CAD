@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <limits.h>
 #include "my_parse.h"
 #include "my_structs.h"
 
@@ -37,7 +38,7 @@ int component_count;
 void number_of_lines(const char* filename) 
 {
     FILE* input_file;
-    char line[256]; // line buffer to store each line of the file
+    char line[LINE_MAX]; // line buffer to store each line of the file
 
     // open the file for reading //
     input_file = fopen(filename, "r");
@@ -74,7 +75,7 @@ void number_of_lines(const char* filename)
 void parse(char* filename)
 {
     FILE* input_file;
-    char line[10000]; // line buffer to store each line of the file
+    char line[LINE_MAX]; // line buffer to store each line of the file
     int parse_line_result; // result of parse_line function
 
     number_of_lines(filename);
@@ -162,7 +163,7 @@ int parse_line(char* line)
 
     // tokenise the line, based on space, tab or newline //
     // store the tokens in an array //
-    token = strtok(line, " \t\n");
+    token = strtok(line, " \t\n\r");
     while (token != NULL && column_count < MAX_COLUMNS - 1)
     {
         tokens[column_count++] = token;
