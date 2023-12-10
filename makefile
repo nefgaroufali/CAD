@@ -5,13 +5,13 @@ CC = gcc
 CFLAGS = -Wall -g -I/usr/include/tcl8.6 -ltcl8.6 -lreadline
 
 # Source files
-SRC = first_ass.c tcl.c readline.c
+SRC = main.c tcl.c readline.c my_structs.c my_parse.c
 
 # Object files
 OBJ = $(SRC:.c=.o)
 
 # Executable name
-EXEC = tclShell
+EXEC = TCL_Shell
 
 # Main target
 all: $(EXEC)

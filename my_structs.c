@@ -5,98 +5,14 @@
 #include "my_structs.h"
 #include "my_parse.h"
 
-/* 
-#define HASH_DEPTH 10
-#define HASH_SIZE 100
+#define MAX_NAME_LENGTH 256
+#define MAX_ARRAY_SIZE 512
+#define MAX_VAR_LENGTH 256
+#define MAX_VARIABLES 256
 
-// thestructure of the component //
-struct component
-{
-    char *comp_name;
-    struct gatepins** gatepins_array;
-    struct gatepins** connections;
-    struct lib_hash* lib_cell;
-    struct component* next;
-};
-
-// the structure of the gatepins //
-struct gatepins
-{
-    char *gatepin_name;
-    struct component* component;
-    struct lib_hash* lib_cell;
-    int io; // 0 for input, 1 for output
-    struct gatepins* next;
-};
-
-// the structure of the library cells //
-struct lib_hash
-{
-    char *lib_cell_name;
-    char *function; 
-    char **pins;
-    struct lib_hash* next;
-};
-
-// the structure of general IOs //
-struct io
-{
-    char *io_name;
-    int io; // 0 for input, 1 for output
-    struct gatepins** connections;
-};
-
-// the structure of the hash table for components //
-struct comp_hash_table
-{
-    struct component** table;
-    int size;
-};
-
-// the structure of the hash table for gatepins //
-struct gatepins_hash_table
-{
-    struct gatepins** table;
-    int size;
-};
-
-// the structure of the hash table for library cells //
-struct lib_hash_table
-{
-    struct lib_hash** table;
-    int size;
-};
-
-extern struct comp_hash_table comp_hash_table;
-extern struct gatepins_hash_table gatepins_hash_table;
-extern struct lib_hash_table lib_hash_table;
-
-// Function declarations //
-struct component* create_component(char* comp_name, struct gatepins** gatepins_array, struct gatepins** connections, struct lib_hash* lib_cell);
-void create_comp_hash_table(int size);
-void insert_component(struct component* comp);
-struct component* find_component(char* comp_name);
-void print_comp_hash_table(struct comp_hash_table* ht);
-void free_comp_hash_table(struct comp_hash_table* ht);
-
-struct gatepins* create_gatepins(char* gatepin_name, struct component* component, struct lib_hash* lib_cell, int io);
-void create_gatepins_hash_table(int size);
-void insert_gatepins(struct gatepins* gatepin);
-struct gatepins* find_gatepins(char* gatepin_name);
-void print_gatepins_hash_table(struct gatepins_hash_table* ht);
-void free_gatepins_hash_table(struct gatepins_hash_table* ht);
-
-struct lib_hash* create_lib_hash(char* lib_cell_name, char* function, char** pins);
-void create_lib_hash_table(int size);
-void insert_lib_hash(struct lib_hash* lib_cell);
-struct lib_hash* find_lib_hash(char* lib_cell_name);
-void print_lib_hash_table(struct lib_hash_table* ht);
-void free_lib_hash_table(struct lib_hash_table* ht);
- */
-
-struct comp_hash_table comp_hash_table;
-struct gatepins_hash_table gatepins_hash_table;
-struct lib_hash_table lib_hash_table;
+struct comp_hash_table comp_hash_table  = {NULL, 0};
+struct gatepins_hash_table gatepins_hash_table = {NULL, 0};
+struct lib_hash_table lib_hash_table = {NULL, 0};
 
 // Function definitions //
 
@@ -110,16 +26,17 @@ unsigned long hash(char *str) {
     return (hash);
 }
 
+//********************************************************************
+//
+// Hash table functions
+//
+//********************************************************************
+
 // This function creates the hash table for components //
 void create_comp_hash_table(int size)
 {
     comp_hash_table.table = malloc(sizeof(struct component*) * size);
     comp_hash_table.size = size;
-    if(comp_hash_table.table == NULL)
-    {
-        printf("Error! Not enough memory.\n");
-        exit(EXIT_FAILURE);
-    }
 
     // Initialize the table with NULL
     for(int i = 0; i < size; i++)
@@ -128,6 +45,39 @@ void create_comp_hash_table(int size)
     }
 }
 
+// This function creates a gatepins hash table //
+void create_gatepins_hash_table(int size)
+{
+    gatepins_hash_table.table = malloc(sizeof(struct gatepins*) * size);
+    gatepins_hash_table.size = size;
+
+    // Initialize the table with NULL
+    for(int i = 0; i < size; i++)
+    {
+        gatepins_hash_table.table[i] = NULL;
+    }
+}
+
+// This function creates a library cell hash table //
+void create_lib_hash_table(int size)
+{
+    lib_hash_table.table = malloc(sizeof(struct lib_hash*) * size);
+    lib_hash_table.size = size;
+
+    // Initialize the table with NULL
+    for(int i = 0; i < size; i++)
+    {
+        lib_hash_table.table[i] = NULL;
+    }
+}
+
+
+
+//********************************************************************
+//
+// Search functions
+//
+//********************************************************************
 
 // This function finds if a component exists in the hash table //
 struct component* find_component(char* comp_name)
@@ -140,7 +90,7 @@ struct component* find_component(char* comp_name)
     
     while(comp != NULL)
     {
-        if(strcmp(comp->comp_name, comp_name) == 0)
+        if(!strcmp(comp->comp_name, comp_name))
         {
             return comp;
         }
@@ -148,6 +98,240 @@ struct component* find_component(char* comp_name)
     }
     return NULL;
 }
+
+// This function finds if a gatepin exists in the hash table //
+struct gatepins* find_gatepins(char* gatepin_name)
+{
+    unsigned long hash_value;
+    struct gatepins* gatepin;
+
+    hash_value = hash(gatepin_name) % gatepins_hash_table.size;
+    gatepin = gatepins_hash_table.table[hash_value];
+    
+    while(gatepin != NULL)
+    {
+        if(!strcmp(gatepin->gatepin_name, gatepin_name))
+        {
+            return gatepin;
+        }
+        gatepin = gatepin->next;
+    }
+    return NULL;
+}
+
+// This function finds if library cell exists in the hash table //
+struct lib_hash* find_lib_hash(char* lib_cell_name)
+{
+    unsigned long hash_value;
+    struct lib_hash* lib_cell;
+
+    hash_value = hash(lib_cell_name) % lib_hash_table.size;
+    lib_cell = lib_hash_table.table[hash_value];
+    
+    while(lib_cell != NULL)
+    {
+        if(!strcmp(lib_cell->lib_cell_name, lib_cell_name))
+        {
+            return lib_cell;
+        }
+        lib_cell = lib_cell->next;
+    }
+    return NULL;
+}
+
+//********************************************************************
+//
+// Create cell functions
+//
+//********************************************************************
+
+// This function creates a component //
+struct component* create_component(char* comp_name, struct gatepins** gatepins_array, struct gatepins** connections, struct lib_hash* lib_cell)
+{
+    // variables //
+    struct component* comp;
+    int i=0;
+
+    // search if the component already exists in the hash table //
+    comp = find_component(comp_name);
+
+    // if the component exists, return it //
+    if(comp != NULL)
+    {
+        return comp;
+    }
+
+    // if the component does not exist, create it //
+    comp = malloc(sizeof(struct component));
+
+    // allocate memory for the component name //
+    comp->comp_name = malloc(strlen(comp_name) + 1);
+
+    // copy the component name //
+    strcpy(comp->comp_name, comp_name);
+
+    // assign the gatepins_array and connections pointers directly //
+    comp->gatepins_array = malloc(sizeof(struct gatepins*) * MAX_ARRAY_SIZE);
+    for(int i = 0; i < MAX_ARRAY_SIZE; i++)
+    {
+        comp->gatepins_array[i] = NULL;
+    }
+    while(gatepins_array != NULL && gatepins_array[i] != NULL )
+    {
+        comp->gatepins_array[i] = gatepins_array[i];
+        i++;
+    }
+    
+    i=0;
+    comp->connections = malloc(sizeof(struct gatepins*) * MAX_ARRAY_SIZE);
+    for(int i = 0; i < MAX_ARRAY_SIZE; i++)
+    {
+        comp->connections[i] = NULL;
+    }
+    while(connections != NULL && connections[i] != NULL)
+    {
+        comp->connections[i] = connections[i];
+        i++;
+    }
+
+    // assign the lib_cell pointer directly //
+    comp->lib_cell = malloc(sizeof(struct lib_hash));
+    comp->lib_cell = lib_cell;
+
+    comp->next = NULL;
+
+    insert_component(comp);
+
+    return comp;
+}
+
+
+// This function creates a gatepin //
+struct gatepins* create_gatepins(char* gatepin_name, struct component* component, struct lib_hash* lib_cell, int io)
+{
+    // variables //
+    struct gatepins* gatepin;
+
+    // search if the gatepin already exists in the hash table //
+    gatepin = find_gatepins(gatepin_name);
+
+    // if the gatepin exists, return it //
+    if(gatepin != NULL)
+    {   
+        if(component != NULL)
+        {
+            gatepin->component = component;
+        }
+        if(lib_cell != NULL)
+        {
+            gatepin->lib_cell = lib_cell;
+        }
+        return gatepin;
+    }
+
+    // if the gatepin does not exist, create it //
+    gatepin = malloc(sizeof(struct gatepins));
+
+    // allocate memory for the gatepin name //
+    gatepin->gatepin_name = malloc(strlen(gatepin_name) + 1);
+    strcpy(gatepin->gatepin_name, gatepin_name);
+
+    // assign the component and lib_cell pointers directly //
+    gatepin->component = malloc(sizeof(struct component));
+    gatepin->component = component;
+    gatepin->lib_cell = malloc(sizeof(struct lib_hash));
+    gatepin->lib_cell = lib_cell;
+
+    // copy the io //
+    gatepin->io = io;
+
+    gatepin->next = NULL;
+
+    insert_gatepins(gatepin);
+    return gatepin;
+}
+
+
+// This function creates a library cell //
+struct lib_hash* create_lib_hash(char* lib_cell_name, char* function, char** pins)
+{
+    // variables //
+    int i = 0;
+    struct lib_hash* lib_cell;
+
+    // search if the library cell already exists in the hash table //
+    lib_cell = find_lib_hash(lib_cell_name);
+
+    // if the library cell exists, return it //
+    if(lib_cell != NULL)
+    {
+        if(function != NULL)
+        {
+            lib_cell->function = malloc(strlen(function) + 1);
+            strcpy(lib_cell->function, function);
+        }
+
+        // allocate memory for the pins //
+        if(pins != NULL)
+        {
+            lib_cell->pins = malloc(sizeof(char*) * MAX_ARRAY_SIZE);
+            // copy the pins //
+            for(i = 0; i < MAX_ARRAY_SIZE; i++)
+            {
+                lib_cell->pins[i] = malloc(strlen(pins[i]) + 1);
+                strcpy(lib_cell->pins[i], pins[i]);
+            }
+        }
+        return lib_cell;
+    }
+
+    // if the library cell does not exist, create it //
+    lib_cell = malloc(sizeof(struct lib_hash));
+    lib_cell->lib_cell_name = malloc(strlen(lib_cell_name) + 1);
+    strcpy(lib_cell->lib_cell_name, lib_cell_name);
+
+    // allocate memory for the function //
+    if(function != NULL)
+    {
+        lib_cell->function = malloc(strlen(function) + 1);
+        strcpy(lib_cell->function, function);
+    }
+    else
+    {
+        lib_cell->function = NULL;
+    }
+    
+
+    // allocate memory for the pins //
+    if(pins != NULL)
+    {
+        lib_cell->pins = malloc(sizeof(char*) * MAX_ARRAY_SIZE);
+        // copy the pins //
+        for(i = 0; i < MAX_ARRAY_SIZE; i++)
+        {
+            lib_cell->pins[i] = malloc(strlen(pins[i]) + 1);
+            strcpy(lib_cell->pins[i], pins[i]);
+        }
+    }
+    else
+    {
+        lib_cell->pins = NULL;
+    }
+
+    lib_cell->next = NULL;
+
+    insert_lib_hash(lib_cell);
+
+    return lib_cell;
+}
+
+
+//********************************************************************
+//
+// Insert cell functions
+//
+//********************************************************************
+
 
 // This function inserts a component to the hash table //
 void insert_component(struct component* comp)
@@ -172,82 +356,27 @@ void insert_component(struct component* comp)
     }
 }
 
-// This function prints all the components in the hash table //
-void print_comp_hash_table(struct comp_hash_table* ht)
-{
-    struct component* comp;
-
-    for(int i = 0; i < ht->size; i++)
-    {
-        comp = ht->table[i];
-        while(comp != NULL)
-        {
-            printf("Component name: %s\n", comp->comp_name);
-            printf("Component connections: ");
-            for(int j = 0; j < HASH_DEPTH; j++)
-            {
-                if(comp->connections[j] != NULL)
-                {
-                    printf("%s ", comp->connections[j]->gatepin_name);
-                }
-            }
-            printf("\n");
-            printf("Component gatepins: ");
-            for(int j = 0; j < HASH_DEPTH; j++)
-            {
-                if(comp->gatepins_array[j] != NULL)
-                {
-                    printf("%s ", comp->gatepins_array[j]->gatepin_name);
-                }
-            }
-            printf("\n");
-            printf("Component lib cell: %s\n", comp->lib_cell->lib_cell_name);
-            printf("\n");
-            comp = comp->next;
-        }
-    }
-}
-
-// This function frees the memory allocated for the hash table //
-void free_comp_hash_table(struct comp_hash_table* ht)
-{
-    struct component* comp;
-    struct component* temp;
-
-    for(int i = 0; i < ht->size; i++)
-    {
-        comp = ht->table[i];
-        while(comp != NULL)
-        {
-            temp = comp;
-            comp = comp->next;
-            free(temp->comp_name);
-            free(temp->gatepins_array);
-            free(temp->connections);
-            free(temp);
-        }
-    }
-    free(ht->table);
-}
-
-// This function finds if library cell exists in the hash table //
-struct lib_hash* find_lib_hash(char* lib_cell_name)
+// This function inserts a gatepin to the hash table //
+void insert_gatepins(struct gatepins* gatepin)
 {
     unsigned long hash_value;
-    struct lib_hash* lib_cell;
+    struct gatepins* gatepin_ptr;
 
-    hash_value = hash(lib_cell_name) % lib_hash_table.size;
-    lib_cell = lib_hash_table.table[hash_value];
-    
-    while(lib_cell != NULL)
+    hash_value = hash(gatepin->gatepin_name) % gatepins_hash_table.size;
+    gatepin_ptr = gatepins_hash_table.table[hash_value];
+
+    if(gatepin_ptr == NULL)
     {
-        if(strcmp(lib_cell->lib_cell_name, lib_cell_name) == 0)
-        {
-            return lib_cell;
-        }
-        lib_cell = lib_cell->next;
+        gatepins_hash_table.table[hash_value] = gatepin;
     }
-    return NULL;
+    else
+    {
+        while(gatepin_ptr->next != NULL)
+        {
+            gatepin_ptr = gatepin_ptr->next;
+        }
+        gatepin_ptr->next = gatepin;
+    }
 }
 
 // This function inserts a library cell to the hash table //
@@ -273,130 +402,46 @@ void insert_lib_hash(struct lib_hash* lib_cell)
     }
 }
 
-// This function prints all the library cells in the hash table //
-void print_lib_hash_table(struct lib_hash_table* ht)
+
+//********************************************************************
+//
+// Print functions
+//
+//********************************************************************
+
+// This function prints all the components in the hash table //
+void print_comp_hash_table(struct comp_hash_table* ht)
 {
-    struct lib_hash* lib_cell;
+    struct component* comp;
 
     for(int i = 0; i < ht->size; i++)
     {
-        lib_cell = ht->table[i];
-        while(lib_cell != NULL)
+        comp = ht->table[i];
+        while(comp != NULL)
         {
-            printf("Library cell name: %s\n", lib_cell->lib_cell_name);
-            printf("Library cell function: %s\n", lib_cell->function);
-            printf("Library cell pins: ");
-            for(int j = 0; j < HASH_DEPTH; j++)
+            printf("Component name: %s\n", comp->comp_name);
+            printf("Component connections: ");
+            for(int j = 0; j < MAX_ARRAY_SIZE; j++)
             {
-                if(lib_cell->pins[j] != NULL)
+                if(comp->connections[j] != NULL)
                 {
-                    printf("%s ", lib_cell->pins[j]);
+                    printf("%s ", comp->connections[j]->gatepin_name);
                 }
             }
             printf("\n");
-            lib_cell = lib_cell->next;
+            printf("Component gatepins: ");
+            for(int j = 0; j < MAX_ARRAY_SIZE; j++)
+            {
+                if(comp->gatepins_array[j] != NULL)
+                {
+                    printf("%s ", comp->gatepins_array[j]->gatepin_name);
+                }
+            }
+            printf("\n");
+            printf("Component lib cell: %s\n", comp->lib_cell->lib_cell_name);
+            printf("\n");
+            comp = comp->next;
         }
-    }
-}
-
-// This function frees the memory allocated for the hash table //
-void free_lib_hash_table(struct lib_hash_table* ht)
-{
-    struct lib_hash* lib_cell;
-    struct lib_hash* temp;
-
-    for(int i = 0; i < ht->size; i++)
-    {
-        lib_cell = ht->table[i];
-        while(lib_cell != NULL)
-        {
-            temp = lib_cell;
-            lib_cell = lib_cell->next;
-            free(temp->lib_cell_name);
-            free(temp->function);
-            free(temp->pins);
-            free(temp);
-        }
-    }
-    free(ht->table);
-}
-
-// This function creates a library cell hash table //
-void create_lib_hash_table(int size)
-{
-    lib_hash_table.table = malloc(sizeof(struct lib_hash*) * size);
-    lib_hash_table.size = size;
-    if(lib_hash_table.table == NULL)
-    {
-        printf("Error! Not enough memory.\n");
-        exit(EXIT_FAILURE);
-    }
-
-    // Initialize the table with NULL
-    for(int i = 0; i < size; i++)
-    {
-        lib_hash_table.table[i] = NULL;
-    }
-}
-
-// This function creates a gatepins hash table //
-void create_gatepins_hash_table(int size)
-{
-    gatepins_hash_table.table = malloc(sizeof(struct gatepins*) * size);
-    gatepins_hash_table.size = size;
-    if(gatepins_hash_table.table == NULL)
-    {
-        printf("Error! Not enough memory.\n");
-        exit(EXIT_FAILURE);
-    }
-
-    // Initialize the table with NULL
-    for(int i = 0; i < size; i++)
-    {
-        gatepins_hash_table.table[i] = NULL;
-    }
-}
-
-// This function finds if a gatepin exists in the hash table //
-struct gatepins* find_gatepins(char* gatepin_name)
-{
-    unsigned long hash_value;
-    struct gatepins* gatepin;
-
-    hash_value = hash(gatepin_name) % gatepins_hash_table.size;
-    gatepin = gatepins_hash_table.table[hash_value];
-    
-    while(gatepin != NULL)
-    {
-        if(strcmp(gatepin->gatepin_name, gatepin_name) == 0)
-        {
-            return gatepin;
-        }
-        gatepin = gatepin->next;
-    }
-    return NULL;
-}
-
-// This function inserts a gatepin to the hash table //
-void insert_gatepins(struct gatepins* gatepin)
-{
-    unsigned long hash_value;
-    struct gatepins* gatepin_ptr;
-
-    hash_value = hash(gatepin->gatepin_name) % gatepins_hash_table.size;
-    gatepin_ptr = gatepins_hash_table.table[hash_value];
-
-    if(gatepin_ptr == NULL)
-    {
-        gatepins_hash_table.table[hash_value] = gatepin;
-    }
-    else
-    {
-        while(gatepin_ptr->next != NULL)
-        {
-            gatepin_ptr = gatepin_ptr->next;
-        }
-        gatepin_ptr->next = gatepin;
     }
 }
 
@@ -434,6 +479,66 @@ void print_gatepins_hash_table(struct gatepins_hash_table* ht)
     }
 }
 
+// This function prints all the library cells in the hash table //
+void print_lib_hash_table(struct lib_hash_table* ht)
+{
+    struct lib_hash* lib_cell;
+
+    for(int i = 0; i < ht->size; i++)
+    {
+        lib_cell = ht->table[i];
+        while(lib_cell != NULL)
+        {
+            printf("Library cell name: %s\n", lib_cell->lib_cell_name);
+            printf("Library cell function: %s\n", lib_cell->function);
+
+            if(lib_cell->pins != NULL)
+            {
+                printf("Library cell pins: ");
+                for(int j = 0; j < MAX_ARRAY_SIZE; j++)
+                {
+                    if(lib_cell->pins[j] != NULL)
+                    {
+                        printf("%s ", lib_cell->pins[j]);
+                    }
+                }
+                printf("\n");
+            }
+            lib_cell = lib_cell->next;
+        }
+    }
+}
+
+
+//********************************************************************
+//
+// Free functions
+//
+//********************************************************************
+
+// This function frees the memory allocated for the hash table //
+void free_comp_hash_table(struct comp_hash_table* ht)
+{
+    struct component* comp;
+    struct component* temp;
+
+    for(int i = 0; i < ht->size; i++)
+    {
+        comp = ht->table[i];
+        while(comp != NULL)
+        {
+            temp = comp;
+            comp = comp->next;
+            free(temp->comp_name);
+            free(temp->gatepins_array);
+            free(temp->connections);
+            free(temp);
+        }
+    }
+    free(ht->table);
+}
+
+
 // This function frees the memory allocated for the hash table //
 void free_gatepins_hash_table(struct gatepins_hash_table* ht)
 {
@@ -455,363 +560,36 @@ void free_gatepins_hash_table(struct gatepins_hash_table* ht)
 }
 
 
-
-int make_data_structures(char** tokens, int count, int flag)
+// This function frees the memory allocated for the hash table //
+void free_lib_hash_table(struct lib_hash_table* ht)
 {
-    char* comp_name;
-    char* lib_cell_name;
-    char* gatepin_name;
-    char* output_pin_name;
-    char* function;
-    char** pins = NULL; 
-    char** connections_names = NULL;
-    char** input_gatepins_names = NULL;
-    struct gatepins** gatepins_array = NULL;
-    struct gatepins** connections = NULL;
     struct lib_hash* lib_cell;
-    struct component* comp = NULL;
-    int i=13;
-    int j=0;
-    int k= count - 7;
-    int l = 7;
-    int length_function = 0;
+    struct lib_hash* temp;
 
-
-    if(flag == 0)
+    for(int i = 0; i < ht->size; i++)
     {
-        // allocate memory for the component name //
-        comp_name = malloc(strlen(tokens[1]) + 1);
-        strcpy(comp_name, tokens[1]);
-
-        // allocate memory for the library cell name //
-        lib_cell_name = malloc(strlen(tokens[3]) + 1);
-        strcpy(lib_cell_name, tokens[3]);
-        
-        // create the library cell // 
-        lib_cell = create_lib_hash(lib_cell_name,NULL,NULL);
-
-        // allocate memory for the gatepin name //
-        gatepin_name = malloc(strlen(tokens[11]) + strlen(tokens[12]) + 1);
-        gatepin_name = strcpy(gatepin_name, tokens[11]);
-        gatepin_name = strcat(gatepin_name, tokens[12]);
-
-        // allocate memory for the gatepins array - This is the array for the component //
-        gatepins_array = malloc(sizeof(struct gatepins*) * HASH_DEPTH);
-
-        // allocate memory for the connections array - This is the array for the component //
-        connections = malloc(sizeof(struct gatepins*) * HASH_DEPTH);
-
-        // allocate memory for the connections names array - This is a temp array to save the names of the connections //
-        connections_names = malloc(sizeof(char*) * HASH_DEPTH);
-
-        // create the gatepin output and store it to the first position of the gatepins array //
-        gatepins_array[0] = malloc(sizeof(struct gatepins));
-        gatepins_array[0] = create_gatepins(gatepin_name,NULL,NULL,1);
-        gatepins_array[0]->lib_cell = lib_cell; // the lib cell of the output gatepin is the lib cell of the component //
-
-        // concat the connections names and create the connections array //
-        for(i=13; i<count; i=i+2)
-        {   
-            connections_names[j] = malloc(strlen(tokens[i]) + strlen(tokens[i+1]) + 1);
-            connections_names[j] = strcpy(connections_names[j], tokens[i]);
-            connections_names[j] = strcat(connections_names[j], tokens[i+1]);
-
-            connections[j] = malloc(sizeof(struct gatepins));
-            connections[j] = create_gatepins(connections_names[j],NULL,NULL,0);
-            j++;
+        lib_cell = ht->table[i];
+        while(lib_cell != NULL)
+        {
+            temp = lib_cell;
+            lib_cell = lib_cell->next;
+            free(temp->lib_cell_name);
+            free(temp->function);
+            free(temp->pins);
+            free(temp);
         }
-
-        // create the component having almost all the necessary information //
-        comp = create_component(comp_name,gatepins_array,connections,lib_cell);
-        gatepins_array[0]->component = comp; // the component of the output gatepin is the component itself //
-
-        return 1;
     }
-
-    else if(flag == 1)
-    {
-        // allocate memory for the component name //
-        comp_name = malloc(strlen(tokens[1]) -1 + 1); // -1 for the ',' +1 for \0 //
-        if(comp_name == NULL)
-        {
-            printf("Error! Not enough memory.\n");
-            exit(EXIT_FAILURE);
-        }
-        strncpy(comp_name, tokens[1], strlen(tokens[1]) -1); // -1 for the ',' //
-        
-        // the component exists, so find it and return it //
-        comp = find_component(comp_name);
-        if(comp == NULL)
-        {
-            printf("Error! Component %s does not exist.\n", comp_name);
-            exit(EXIT_FAILURE);
-        }
-
-        // allocate memory for the function name //
-        for(i=7; i<count; i++)
-        {
-            length_function = length_function + strlen(tokens[i]);
-        }
-
-        function = malloc(length_function + 1);
-        function = strcpy(function, tokens[7]);
-        for(i=8; i<count; i++)
-        {
-            function = strcat(function, tokens[i]);
-        }
-        
-
-        // allocate memory for the pins array //
-        pins = malloc(sizeof(char*) * HASH_DEPTH);
-        if(pins == NULL)
-        {
-            printf("Error! Not enough memory.\n");
-            exit(EXIT_FAILURE);
-        }
-
-        // lib cell exists so find it and return it //
-        lib_cell = find_lib_hash(comp->lib_cell->lib_cell_name);
-        lib_cell->function = malloc(strlen(function) + 1);
-        if(lib_cell->function == NULL)
-        {
-            printf("Error! Not enough memory.\n");
-            exit(EXIT_FAILURE);
-        }
-        strcpy(lib_cell->function, function);
-
-        // create the pins array //
-        lib_cell->pins = malloc(sizeof(char*) * HASH_DEPTH);
-        if(lib_cell->pins == NULL)
-        {
-            printf("Error! Not enough memory.\n");
-            exit(EXIT_FAILURE);
-        }
-
-        pins = extractVariables(function);
-
-        j = 0;
-
-        while(pins[j] != NULL)
-        {
-            lib_cell->pins[j] = malloc(strlen(pins[j]) + 3 + 1); // 3 for (/) and 1 for \0 //
-            if(lib_cell->pins[j] == NULL)
-            {
-                printf("Error! Not enough memory.\n");
-                exit(EXIT_FAILURE);
-            }
-            sprintf(lib_cell->pins[j], "(/%s)", pins[j]);
-            j++;
-        }
-
-        output_pin_name = malloc(strlen(tokens[4]) -1 + 1); // -1 for the ',' +1 for \0 //
-        if(output_pin_name == NULL)
-        {
-            printf("Error! Not enough memory.\n");
-            exit(EXIT_FAILURE);
-        }
-        strncpy(output_pin_name, tokens[4], strlen(tokens[4]) -1); // -1 for the ',' //
-
-        lib_cell->pins[j] = malloc(sizeof(char) * (strlen(output_pin_name) + 3) + 1);
-        if(lib_cell->pins[j] == NULL)
-        {
-            printf("Error! Not enough memory.\n");
-            exit(EXIT_FAILURE);
-        }
-        sprintf(lib_cell->pins[j], "(/%s)", output_pin_name);
-
-        input_gatepins_names = malloc(sizeof(char*) * HASH_DEPTH);
-        if(input_gatepins_names == NULL)
-        {
-            printf("Error! Not enough memory.\n");
-            exit(EXIT_FAILURE);
-        }
-
-        i = 1;
-
-        while(j>0)
-        {
-            input_gatepins_names[j] = malloc(strlen(comp_name) + strlen(lib_cell->pins[j-1]) + 1);
-            strcpy(input_gatepins_names[j], comp_name);
-            strcat(input_gatepins_names[j], lib_cell->pins[j-1]);
-
-            comp->gatepins_array[i] = create_gatepins(input_gatepins_names[j],comp,lib_cell,0);
-            i++;
-            j--;
-        }
-
-        return 1;
-    }
-
-    return 1;
+    free(ht->table);
 }
 
 
-// This function creates a component //
-struct component* create_component(char* comp_name, struct gatepins** gatepins_array, struct gatepins** connections, struct lib_hash* lib_cell)
-{
-    // variables //
-    struct component* comp;
-    int i=0;
+//********************************************************************
+//
+// Extra functions
+//
+//************************************************************
 
-    // search if the component already exists in the hash table //
-    comp = find_component(comp_name);
 
-    // if the component exists, return it //
-    if(comp != NULL)
-    {
-        return comp;
-    }
-
-    // if the component does not exist, create it //
-    comp = malloc(sizeof(struct component));
-    if(comp == NULL)
-    {
-        printf("Error! Not enough memory.\n");
-        exit(EXIT_FAILURE);
-    }
-
-    // allocate memory for the component name //
-    comp->comp_name = malloc(strlen(comp_name) + 1);
-    if(comp->comp_name == NULL)
-    {
-        printf("Error! Not enough memory.\n");
-        exit(EXIT_FAILURE);
-    }
-    // copy the component name //
-    strcpy(comp->comp_name, comp_name);
-
-    // assign the gatepins_array and connections pointers directly //
-    comp->gatepins_array = malloc(sizeof(struct gatepins*) * HASH_DEPTH);
-    while(gatepins_array[i] != NULL)
-    {
-        comp->gatepins_array[i] = gatepins_array[i];
-        i++;
-    }
-    comp->connections = malloc(sizeof(struct gatepins*) * HASH_DEPTH);
-    
-    i=0;
-    while(connections[i] != NULL)
-    {
-        comp->connections[i] = connections[i];
-        i++;
-    }
-
-    // assign the lib_cell pointer directly //
-    comp->lib_cell = malloc(sizeof(struct lib_hash));
-    comp->lib_cell = lib_cell;
-
-    insert_component(comp);
-
-    return comp;
-}
-
-// This function creates a gatepin //
-struct gatepins* create_gatepins(char* gatepin_name, struct component* component, struct lib_hash* lib_cell, int io)
-{
-    // variables //
-    struct gatepins* gatepin;
-
-    // search if the gatepin already exists in the hash table //
-    gatepin = find_gatepins(gatepin_name);
-
-    // if the gatepin exists, return it //
-    if(gatepin != NULL)
-    {   
-        if(component != NULL)
-        {
-            gatepin->component = component;
-        }
-        if(lib_cell != NULL)
-        {
-            gatepin->lib_cell = lib_cell;
-        }
-        return gatepin;
-    }
-
-    // if the gatepin does not exist, create it //
-    gatepin = malloc(sizeof(struct gatepins));
-    if(gatepin == NULL)
-    {
-        printf("Error! Not enough memory.\n");
-        exit(EXIT_FAILURE);
-    }
-
-    // allocate memory for the gatepin name //
-    gatepin->gatepin_name = malloc(strlen(gatepin_name) + 1);
-    if(gatepin->gatepin_name == NULL)
-    {
-        printf("Error! Not enough memory.\n");
-        exit(EXIT_FAILURE);
-    }
-    // copy the gatepin name //
-    strcpy(gatepin->gatepin_name, gatepin_name);
-
-    // assign the component and lib_cell pointers directly //
-    gatepin->component = malloc(sizeof(struct component));
-    gatepin->component = component;
-    gatepin->lib_cell = malloc(sizeof(struct lib_hash));
-    gatepin->lib_cell = lib_cell;
-
-    // copy the io //
-    gatepin->io = io;
-
-    insert_gatepins(gatepin);
-    return gatepin;
-}
-
-// This function creates a library cell //
-struct lib_hash* create_lib_hash(char* lib_cell_name, char* function, char** pins)
-{
-    // variables //
-    int i = 0;
-    struct lib_hash* lib_cell;
-
-    // search if the library cell already exists in the hash table //
-    lib_cell = find_lib_hash(lib_cell_name);
-
-    // if the library cell exists, return it //
-    if(lib_cell != NULL)
-    {
-        return lib_cell;
-    }
-
-    // if the library cell does not exist, create it //
-    lib_cell = malloc(sizeof(struct lib_hash));
-    lib_cell->lib_cell_name = malloc(strlen(lib_cell_name) + 1);
-    strcpy(lib_cell->lib_cell_name, lib_cell_name);
-
-    // allocate memory for the function //
-    if(function != NULL)
-    {
-        lib_cell->function = malloc(strlen(function) + 1);
-        strcpy(lib_cell->function, function);
-    }
-    else
-    {
-        lib_cell->function = NULL;
-    }
-    
-
-    // allocate memory for the pins //
-    if(pins != NULL)
-    {
-        lib_cell->pins = malloc(sizeof(char*) * HASH_DEPTH);
-        // copy the pins //
-        for(i = 0; i < HASH_DEPTH; i++)
-        {
-            lib_cell->pins[i] = malloc(strlen(pins[i]) + 1);
-            strcpy(lib_cell->pins[i], pins[i]);
-        }
-    }
-    else
-    {
-        lib_cell->pins = NULL;
-    }
-
-    insert_lib_hash(lib_cell);
-
-    return lib_cell;
-}
 
 char** extractVariables(const char* function) {
     char** variables = (char**)malloc(MAX_VARIABLES * sizeof(char*));

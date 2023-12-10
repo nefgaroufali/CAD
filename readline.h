@@ -10,8 +10,8 @@ extern char *commands_list[];
 // by start and end  //
 char **custom_completer(const char *, int, int);
 
-// generate command for tab completetion, use state to find out if //
-// we need to start from scratch or just the top of the list //
+// generate command for tab completetion //
+// return the matched string //
 char *tab_generator(const char *, int);
 
 #endif

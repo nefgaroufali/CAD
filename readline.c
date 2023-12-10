@@ -9,16 +9,11 @@
 
 #define NRM  "\x1B[0m"		// Normal Color
 #define RED  "\x1B[31m"		// Red Color
-#define GRN  "\x1B[32m"		// Green Color
-#define YEL  "\x1B[33m"		// Yellow Color
-#define BLU  "\x1B[34m"		// Blue Color
-#define MAG  "\x1B[35m"		// Magenta Color
-#define CYN  "\x1B[36m"		// Cyan Color
-#define WHT  "\x1B[37m"	    // White Color
 
 char *commands_list[]= {
 	// my commands //
-	"ls", "less",
+	"ls", "less", "read_design", "list_components", "list_IOs", "report_component_function",
+	"report_component_type", "list_component_CCS", "list_IO_CCS",
 	// standard tcl command for TCL8.6//
 	"after", "errorInfo", "load", "re_syntax", "tcl_startOfNextWord",
 	"append","eval","lrange","read","tcl_startOfPreviousWord",
@@ -80,7 +75,7 @@ char *tab_generator(const char *text, int state)
 
 	char *name = NULL;
 
-	// initialize word, if this is a new word to complete, and //
+	// initialize word, if this is a new word to complete //
 	// set index to 0 //
 	if (!state) {
 		index_list = 0;
@@ -88,7 +83,7 @@ char *tab_generator(const char *text, int state)
 	}
 
 	// match name from command list until NULL //
-	while( (name = commands_list[index_list]) )
+	while((name = commands_list[index_list]))
 	{
 		index_list++;
 

@@ -1,257 +1,326 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 #include <ctype.h>
 #include <limits.h>
+
 #include "my_parse.h"
 #include "my_structs.h"
 
-/* 
-#define IS_BLANK 1
-#define ISNOT_BLANK 0
-#define MAX_COLUMNS 100  // Adjust this based on the maximum number of columns expected
-#define PARSING_ERROR -1
-#define PARSING_SUCCESSFUL 1
-#define IS_COMMENT 1
-#define IS_NOT_COMMENT 0
-#define IS_ROW 1
-#define IS_NOT_ROW 0
-#define IGNORE 1
-#define NOT_IGNORE 0
+int component_count = 0;
+int times_parsing = 0;
 
-
-
-void parse(char* filename);
-int is_blank_line(const char* line);
-int parse_line(char* line);
-void number_of_lines(const char* filename);
-int is_comment_line(const char* line);
-int is_row_line(const char* line);
-
-int component_count = 0; // count of lines starting with "Component"
- */
-
-int component_count;
 
 // This function counts the lines of the file that start with word "Component" //
 // This is used to find the size of the hash table //
-void number_of_lines(const char* filename) 
+void count_components(FILE *fp)
 {
-    FILE* input_file;
-    char line[LINE_MAX]; // line buffer to store each line of the file
+    char *line = NULL;
+    char *copy_line = NULL;
+    char *token = NULL;
+    size_t length = 0;
+    int first_token = 0;
 
-    // open the file for reading //
-    input_file = fopen(filename, "r");
-    if (input_file == NULL)
+    while((getline(&line, &length, fp)) != -1)
     {
-        perror("Error opening file");
-        exit(1);
-    }
-
-    // read each line of the file //
-    while (fgets(line, sizeof(line), input_file)) 
-    {
-
-        // skip blank lines //
-        if (is_blank_line(line) == IS_BLANK) 
+        copy_line = strdup(line);
+        token = strtok(copy_line, DELIMITERS);
+        first_token = check_first_token(token);
+        free(copy_line);
+        switch (first_token)
         {
-            continue;
-        }
-
-        // check if line starts with "Component" //
-        if (strncmp(line, "Component", strlen("Component")) == 0) 
-        {
-            component_count++;
+            case IS_COMMENT:
+                continue;
+            case IS_ROW:
+                continue;
+            case IS_IO:
+                continue;
+            case IS_COMPONENT:
+                component_count++;
+                continue;
         }
     }
-
-    component_count = component_count / 2;
-
-    fclose(input_file);
+    
+    free(line);
 
     return;
 }
 
-void parse(char* filename)
+
+void parse_design_file(FILE *fp)
 {
-    FILE* input_file;
-    char line[LINE_MAX]; // line buffer to store each line of the file
-    int parse_line_result; // result of parse_line function
+	char *line = NULL;
+	char *copy_line = NULL;
+	char *token = NULL;
+	size_t length = 0;
+	int first_token = 0;
 
-    number_of_lines(filename);
-    create_comp_hash_table(component_count);
-    create_lib_hash_table(component_count);
-    create_gatepins_hash_table(component_count);
+    count_components(fp);
+	create_comp_hash_table(component_count);
+	create_lib_hash_table(component_count);
+	create_gatepins_hash_table(component_count);
+	rewind(fp);
 
-    // open the file for reading
-    input_file = fopen(filename, "r");
-    if (input_file == NULL)
+	for(times_parsing = 0; times_parsing < 2; times_parsing++)
+	{
+		while((getline(&line, &length, fp)) != -1)
+		{
+			copy_line = strdup(line);
+			token = strtok(copy_line, DELIMITERS);
+			first_token = check_first_token(token);
+			free(copy_line);
+			switch (first_token)
+			{
+				case IS_COMMENT:
+					continue;
+				case IS_ROW:
+					continue;
+				case IS_IO:
+					//parse_io_line(line);
+					continue;
+				case IS_COMPONENT:
+					parse_comp_line(line);
+					continue;
+			}
+		}
+	}
+	
+	fclose(fp);
+	free(line);
+
+	printf(GRN"File parsed successfully!\n"NRM);
+}
+
+int check_first_token(char *string)
+{
+	const char comment = '#';
+	size_t length = 0;
+	int i;
+
+	length = strlen(string);
+
+	// Check if the string is the size of one character
+	if (length == 1)
+	{
+		if (string[0] == comment) // If the character is equal to the comment 
+			return IS_COMMENT;  // Return IS_comment
+		else // If it is not
+			return IS_SYNTAX_ERRROR;  // Return Syntax Error
+	}
+
+	// Check if string is ROW
+	if (!strcmp(string, ROW))
+		return IS_ROW;
+	// Check if string is IO
+	if (!strcmp(string, IO))
+		return IS_IO;
+	// Check if string is COMPONENT
+	if (!strcmp(string, COMPONENT))
+		return IS_COMPONENT;
+    // Check if line is blank
+    for (i = 0; i < length; i++)
     {
-        perror("Error opening file");
-        exit(1);
-    }
-
-    // read each line of the file
-    while (fgets(line, sizeof(line), input_file))
-    {
-
-        // skip blank lines
-        if (is_blank_line(line) == IS_BLANK || is_comment_line(line) == IS_COMMENT || is_row_line(line) == IS_ROW)
-        {
-            continue;
-        }
-
-        // parse the line
-        parse_line_result = parse_line(line);
+        if (string[i] != ' ' && string[i] != '\t' && string[i] != '\n')
+            return IS_SYNTAX_ERRROR;
         
-        if (parse_line_result == PARSING_ERROR)
-        {
-            fprintf(stderr, "Error parsing line: %s\n", line);
-            exit(1);
-        }
+        if(i == length - 1)
+            return IS_BLANK_LINE;
     }
 
-    printf("Number of components: %d\n", component_count);
-
-    fclose(input_file);
+	return SUCCESS; 
 }
-
-// This function checks if the current line is blank //
-int is_blank_line(const char* line)
-{
-    int i = 0;
-
-    // Until the end of the line, check if there is a character //
-    // that is not a space, tab or newline //
-    while (line[i] != '\0')
-    {
-        if (line[i] != ' ' && line[i] != '\t' && line[i] != '\n')
-        {
-            return ISNOT_BLANK;
-        }
-        i++;
-    }
-    return IS_BLANK;
-}
-
-// This function checks if this line is about Rows that I handle as comments //
-int is_row_line(const char* line)
-{
-    if (line[0] == 'R')
-    {
-        return IS_ROW;
-    }
-    return IS_NOT_ROW;
-}
-
-// This function checks if this line is a comment //
-int is_comment_line(const char* line)
-{
-    if (line[0] == '#')
-    {
-        return IS_COMMENT;
-    }
-    return IS_NOT_COMMENT;
-}
-
-// This function parses the line //
-int parse_line(char* line)
-{
-    char* tokens[MAX_COLUMNS];
-    int column_count = 0;
-    char* token;
-
-    // tokenise the line, based on space, tab or newline //
-    // store the tokens in an array //
-    token = strtok(line, " \t\n\r");
-    while (token != NULL && column_count < MAX_COLUMNS - 1)
-    {
-        tokens[column_count++] = token;
-        token = strtok(NULL, " \t\n\r");
-    }
-    tokens[column_count] = NULL;
-
-    // process tokens here
-    // Here will be the calls for the data structures //
-    // to store the useful information of the file //
-    if(strcmp(tokens[0],"IO:") == 0)
-    {
-        return PARSING_SUCCESSFUL;
-    }
-    else if(strcmp(tokens[2],"Cell_Type:") == 0)
-    {
-        make_data_structures(tokens, column_count,0);
-    }
-    else if(strcmp(tokens[2],"Output") == 0)
-    {
-        make_data_structures(tokens, column_count,1);
-    }
-
-    //printf("Token %d: %s\n", i, tokens[i]);
-
-    return 0;
-}
-
-
-
-int main(int argc, char* argv[])
-{
-    parse(argv[1]);
-    printf("\n\nPrinting the components hash table\n\n");
-    print_comp_hash_table(&comp_hash_table);
-    printf("\n\nPrinting the library hash table\n\n");
-    print_lib_hash_table(&lib_hash_table);
-    printf("\n\nPrinting the gatepins hash table\n\n");
-    print_gatepins_hash_table(&gatepins_hash_table);
-    return 0;
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 /* 
+void parse_io_line(char *line)
+{
+	const char location[] = "Location:";
+	const char ccs[] = "CCs:";
 
+	char *token = NULL;
+	char *name = NULL;
 
-int main() {
-    FILE *file = fopen("your_file.txt", "r");
-    if (file == NULL) {
-        perror("Error opening file");
-        return 1;
-    }
+	double x = 0;
+	double y = 0;
 
-    char line[256];  // Adjust the buffer size according to your needs
-    while (fgets(line, sizeof(line), file)) {
-        char *tokens[MAX_COLUMNS];
-        int column_count = 0;
+	// Ignore first token, "IO:"
+	token = strtok(line, DELIMITERS);
 
-        char *token = strtok(line, " \t\n"); // Tokenize based on space, tab, or newline
-        while (token != NULL && column_count < MAX_COLUMNS - 1) {
-            tokens[column_count++] = token;
-            token = strtok(NULL, " \t\n");
-        }
-        tokens[column_count] = NULL;  // Null-terminate the array
+	token = strtok(NULL, DELIMITERS);
+	if (token == NULL)
+	{
+		printf(RED"Syntax Error!\n"NRM);
+		exit(1);
+	}
+	name = strdup(token);
 
-        // Process tokens here
-        for (int i = 0; i < column_count; ++i) {
-            printf("Token %d: %s\n", i, tokens[i]);
-        }
-    }
+	token = strtok(NULL, DELIMITERS);
+	if (token == NULL)
+	{
+		printf(RED"Syntax Error!\n"NRM);
+		exit(1);
+	}
 
-    fclose(file);
-    return 0;
+	// If token is location, the its the initial definition of the IO pin
+	if (!strcmp(token, location))
+	{
+		token = strtok(NULL, DELIMITERS);
+		if (token == NULL)
+		{
+			printf(RED"Syntax Error!\n"NRM);
+			exit(1);
+		}
+		x = atof(token);
+
+		token = strtok(NULL, DELIMITERS);
+		if (token == NULL)
+		{
+			printf(RED"Syntax Error!\n"NRM);
+			exit(1);
+		}
+		y = atof(token);
+		
+		token = strtok(NULL, DELIMITERS);
+		if (token != NULL)
+		{
+			printf(RED"Syntax Error!\n"NRM);
+			exit(1);
+		}
+
+		insert_io(name, x, y);
+		return;
+	}
+
+	// If token is ccs, then its the connections of the IO pin
+	// If not its syntax error
+	if (strcmp(token, ccs))
+	{
+		printf(RED"Syntax Error!\n"NRM);
+		exit(1);
+	}
+
+	//  Check for connections
+	token = strtok(NULL, DELIMITERS);
+	if (token == NULL)
+		return;
+
+	insert_io_net(strdup(name), strdup(token));
+
+	token = strtok(NULL, DELIMITERS);
+	
+	// It is not a must to have a connection
+	while (token != NULL)
+	{
+		insert_io_net(strdup(name), strdup(token));
+		token = strtok(NULL, DELIMITERS);
+	}
 }
  */
+
+
+void parse_comp_line(char *line)
+{
+    char *tokens[LINE_MAX];
+	char *token = NULL;
+    int token_count = 0;
+
+	// Ignore first token, "Component:"
+	token = strtok(line, DELIMITERS);
+    while(token != NULL)
+    {
+        tokens[token_count++] = token;
+		token = strtok(NULL, DELIMITERS);
+        //token_count++;
+    }
+
+	if(!strcmp(tokens[2],"Cell_Type:") && times_parsing == 0)
+    {
+        parse_comp1(tokens, token_count);
+    }
+    else if(!strcmp(tokens[2],"Output") && times_parsing == 0)
+    {
+        parse_comp2(tokens, token_count);
+    }
+	/* else if(!strcmp(tokens[2],"Cell_Type:") && times_parsing == 1)
+	{
+		parse_gatepins(tokens, token_count);
+	} */
+}
+
+void parse_comp1(char *tokens[], int token_count)
+{
+    char *comp_name = NULL;
+    char *lib_name = NULL;
+    struct lib_hash *lib = NULL;
+
+    comp_name = strdup(tokens[1]);
+    lib_name = strdup(tokens[3]);
+
+    lib = create_lib_hash(lib_name,NULL,NULL);
+    create_component(comp_name,NULL,NULL, lib);
+    
+	free(comp_name);
+	free(lib_name);
+}
+
+void parse_comp2(char *tokens[], int token_count)
+{
+    char *comp_name = NULL;
+    struct component *component = NULL;
+    struct lib_hash *lib = NULL;
+    char *function = NULL;
+    int i = 0;
+	int length_function = 0;
+
+	comp_name = malloc(sizeof(char) * strlen(tokens[1]) + 1 -1); // +1 for '\0' -1 for ','
+    strncpy(comp_name,tokens[1], strlen(tokens[1]) - 1); // -1 for ','
+	comp_name[strlen(tokens[1]) - 1] = '\0';
+    component = find_component(comp_name);
+    lib = component->lib_cell;
+
+
+	for(i=7; i<token_count; i++)
+	{
+		length_function = length_function + strlen(tokens[i]);
+	}
+    function = malloc(length_function + 1);
+    function = strcpy(function, tokens[7]);
+    for(i=8; i<token_count; i++)
+    {
+        function = strcat(function, tokens[i]);
+    }
+
+    create_lib_hash(lib->lib_cell_name, function, NULL);
+
+	free(comp_name);
+	free(function);
+}
+
+/* void parse_gatepins(char *tokens[], int token_count)
+{
+	
+} */
+
+/* 
+int main(int argc, char *argv[])
+{
+	FILE *fp = NULL;
+
+	if (argc != 2)
+	{
+		printf(RED"Usage: %s <design_file>\n"NRM, argv[0]);
+		exit(1);
+	}
+
+	fp = fopen(argv[1], "r");
+	if (fp == NULL)
+	{
+		printf(RED"Error: %s\n"NRM, strerror(errno));
+		exit(1);
+	}
+
+	parse_design_file(fp);
+	print_comp_hash_table(&comp_hash_table);
+	print_lib_hash_table(&lib_hash_table);
+
+	return 0;
+} */

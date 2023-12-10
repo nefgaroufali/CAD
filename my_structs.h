@@ -1,10 +1,12 @@
 #ifndef MY_STRUCTS_H
 #define MY_STRUCTS_H
 
-#define HASH_DEPTH 10000
-#define HASH_SIZE 10000
-#define MAX_VARIABLES 10000
-#define MAX_VAR_LENGTH 20000
+#define NRM  "\x1B[0m"		// Normal Color
+#define RED  "\x1B[31m"		// Red Color
+#define GRN  "\x1B[32m"		// Green Color
+#define YEL  "\x1B[33m"		// Yellow Color
+#define BLU  "\x1B[34m"		// Blue Color
+#define MAG  "\x1B[35m"		// Magenta Color
 
 // thestructure of the component //
 struct component
@@ -22,6 +24,8 @@ struct gatepins
     char *gatepin_name;
     struct component* component;
     struct lib_hash* lib_cell;
+    //struct gatepins** connections;
+    //char* function;
     int io; // 0 for input, 1 for output
     struct gatepins* next;
 };

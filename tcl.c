@@ -4,16 +4,11 @@
 #include <tcl8.6/tcl.h>
 
 #include "tcl.h"
+#include "my_parse.h"
+#include "my_structs.h"
 
 #define NRM  "\x1B[0m"		// Normal Color
 #define RED  "\x1B[31m"		// Red Color
-#define GRN  "\x1B[32m"		// Green Color
-#define YEL  "\x1B[33m"		// Yellow Color
-#define BLU  "\x1B[34m"		// Blue Color
-#define MAG  "\x1B[35m"		// Magenta Color
-#define CYN  "\x1B[36m"		// Cyan Color
-#define WHT  "\x1B[37m"	    // White Color
-
 
 Tcl_Interp *interp_nef;
 
@@ -27,6 +22,15 @@ int init_interpreter()
 	Tcl_CreateObjCommand(interp_nef, "less", less, NULL, NULL);
 	Tcl_CreateObjCommand(interp_nef, "ls", ls, NULL, NULL);
 
+	// define commands for the parsing of the file
+	Tcl_CreateObjCommand(interp_nef, "read_design", read_design, NULL, NULL);
+	Tcl_CreateObjCommand(interp_nef, "list_components", list_components, NULL, NULL);
+	//Tcl_CreateObjCommand(interp_nef, "list_IOs", list_IOs, NULL, NULL);
+	//Tcl_CreateObjCommand(interp_nef, "report_component_function", report_component_function, NULL, NULL);
+	Tcl_CreateObjCommand(interp_nef, "report_component_type", report_component_type, NULL, NULL);
+	//Tcl_CreateObjCommand(interp_nef, "list_component_CCS", list_component_CCS, NULL, NULL);
+	//Tcl_CreateObjCommand(interp_nef, "list_IO_CCS", list_IO_CCS, NULL, NULL);
+
 	if (Tcl_Init(interp_nef) == TCL_ERROR)
 	{
 		fprintf(stderr, RED"!!!Error while creating interp_nef\n"NRM);
@@ -38,7 +42,6 @@ int init_interpreter()
 // delete created interp_nef //
 int del_interpreter()
 {
-	
 	//Tcl_FreeResult(interp_nef);
 	Tcl_DeleteInterp(interp_nef);
 	Tcl_InterpDeleted(interp_nef);
@@ -156,6 +159,87 @@ int less(ClientData clientdata, Tcl_Interp *interp, int argc, Tcl_Obj *const arg
 
 	system(cmd);
 	free(cmd);
+
+	return TCL_OK;
+}
+
+// read_design, implementation of read_design command
+int read_design(ClientData clientdata, Tcl_Interp *interp, int argc, Tcl_Obj *const argv[])
+{
+	const char syntax[] = "<filepath>";
+
+	int len = 0;
+	FILE *fp = NULL;
+	char *file = NULL;
+
+	if (argc != 2)
+	{
+		Tcl_WrongNumArgs(interp, 1, argv, syntax);
+		return TCL_ERROR;
+	}
+
+	file = Tcl_GetStringFromObj(argv[1], &len);
+
+	fp = fopen(file, "r");
+
+	if (fp == NULL)
+	{
+		printf("File does not exist!\n");
+		return TCL_ERROR;
+	}
+
+	parse_design_file(fp);
+	// fclose(fp);
+
+	print_comp_hash_table(&comp_hash_table);
+	print_lib_hash_table(&lib_hash_table);
+
+	return TCL_OK;
+}
+
+// list_components, implementation of list_components command
+int list_components(ClientData clientdata, Tcl_Interp *interp, int argc, Tcl_Obj *const argv[])
+{
+	// there are no args, just print all the components names
+	for(int i = 0; i < comp_hash_table.size; i++)
+	{
+		if(comp_hash_table.table[i] != NULL)
+		{
+			printf("%s\n", comp_hash_table.table[i]->comp_name);
+		}
+	}
+
+	return TCL_OK;
+
+}
+
+// report_component_type, implementation of report_component_type command
+int report_component_type(ClientData clientdata, Tcl_Interp *interp, int argc, Tcl_Obj *const argv[])
+{
+	char *comp_name;
+	struct component *component = NULL;
+
+	// check if the hash tables are null
+	if(comp_hash_table.table == NULL)
+	{
+		fprintf(stderr, RED"!!!Error: No components in the design. !!! Must first call read_design\n"NRM);
+		return TCL_OK;
+	}
+	
+	// there is one arg, the component name
+	if(argc != 2)
+	{
+		fprintf(stderr, RED"!!!Error: Wrong number of arguments\n"NRM);
+		fprintf(stderr, NRM"Expected: report_component_type <component_name>\n"NRM);
+		return TCL_OK;
+	}
+
+	comp_name = Tcl_GetString(argv[1]);
+	component = find_component(comp_name);
+
+	// print the component name and the component type
+	printf("%s %s\n", component->comp_name, component->lib_cell->lib_cell_name);
+
 
 	return TCL_OK;
 }
