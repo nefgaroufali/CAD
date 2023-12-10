@@ -13,7 +13,7 @@ struct component
 {
     char *comp_name;
     struct gatepins** gatepins_array;
-    struct gatepins** connections;
+    //struct gatepins** connections;
     struct lib_hash* lib_cell;
     struct component* next;
 };
@@ -24,8 +24,8 @@ struct gatepins
     char *gatepin_name;
     struct component* component;
     struct lib_hash* lib_cell;
-    //struct gatepins** connections;
-    //char* function;
+    struct gatepins** connections;
+    char* function;
     int io; // 0 for input, 1 for output
     struct gatepins* next;
 };
@@ -34,7 +34,7 @@ struct gatepins
 struct lib_hash
 {
     char *lib_cell_name;
-    char *function; 
+    //char *function; 
     char **pins;
     struct lib_hash* next;
 };
@@ -73,21 +73,21 @@ extern struct gatepins_hash_table gatepins_hash_table;
 extern struct lib_hash_table lib_hash_table;
 
 // Function declarations //
-struct component* create_component(char* comp_name, struct gatepins** gatepins_array, struct gatepins** connections, struct lib_hash* lib_cell);
+struct component* create_component(char* comp_name, struct gatepins** gatepins_array, struct lib_hash* lib_cell);
 void create_comp_hash_table(int size);
 void insert_component(struct component* comp);
 struct component* find_component(char* comp_name);
 void print_comp_hash_table(struct comp_hash_table* ht);
 void free_comp_hash_table(struct comp_hash_table* ht);
 
-struct gatepins* create_gatepins(char* gatepin_name, struct component* component, struct lib_hash* lib_cell, int io);
+struct gatepins* create_gatepins(char* gatepin_name, struct component* component, struct lib_hash* lib_cell, struct gatepins** connections, char* function, int io);
 void create_gatepins_hash_table(int size);
 void insert_gatepins(struct gatepins* gatepin);
 struct gatepins* find_gatepins(char* gatepin_name);
 void print_gatepins_hash_table(struct gatepins_hash_table* ht);
 void free_gatepins_hash_table(struct gatepins_hash_table* ht);
 
-struct lib_hash* create_lib_hash(char* lib_cell_name, char* function, char** pins);
+struct lib_hash* create_lib_hash(char* lib_cell_name, char** pins);
 void create_lib_hash_table(int size);
 void insert_lib_hash(struct lib_hash* lib_cell);
 struct lib_hash* find_lib_hash(char* lib_cell_name);

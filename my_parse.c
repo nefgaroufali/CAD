@@ -349,8 +349,8 @@ void parse_comp1(char *tokens[], int token_count)
     comp_name = strdup(tokens[1]);
     lib_name = strdup(tokens[3]);
 
-    lib = create_lib_hash(lib_name,NULL,NULL);
-    create_component(comp_name,NULL,NULL, lib);
+    lib = create_lib_hash(lib_name,NULL);
+    create_component(comp_name,NULL,lib);
     
 	free(comp_name);
 	free(lib_name);
@@ -383,7 +383,7 @@ void parse_comp2(char *tokens[], int token_count)
         function = strcat(function, tokens[i]);
     }
 
-    create_lib_hash(lib->lib_cell_name, function, NULL);
+    create_lib_hash(lib->lib_cell_name,NULL);
 
 	free(comp_name);
 	free(function);
@@ -391,7 +391,12 @@ void parse_comp2(char *tokens[], int token_count)
 
 /* void parse_gatepins(char *tokens[], int token_count)
 {
-	
+	char *gatepin_name = NULL;
+	char *comp_name = NULL;
+	char *lib_name = NULL;
+	struct component *component = NULL;
+	struct lib_hash *lib = NULL;
+	struct gatepins *gatepin = NULL;
 } */
 
 /* 
