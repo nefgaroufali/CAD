@@ -9,7 +9,10 @@
 #include "my_structs.h"
 
 int component_count = 0;
+int gatepins_count = 0;
+int lib_count = 0;
 int times_parsing = 0;
+char *library_cells[100] = {NULL};
 
 
 // This function counts the lines of the file that start with word "Component" //
@@ -42,9 +45,96 @@ void count_components(FILE *fp)
         }
     }
     
+	printf("component_count = %d\n",component_count);
     free(line);
 
     return;
+}
+
+// this function counts the number of gatepins in the file //
+void count_gatepins(FILE *fp)
+{
+	char *line = NULL;
+	char *copy_line = NULL;
+	char *token = NULL;
+	char* tokens[LINE_MAX] = {NULL};
+	size_t length = 0;
+	int column_count = 0;
+
+	while((getline(&line, &length, fp)) != -1)
+	{
+		copy_line = strdup(line);
+		token = strtok(copy_line, DELIMITERS);
+		while (token != NULL && column_count <  LINE_MAX -1)
+		{
+			tokens[column_count++] = token;
+			token = strtok(NULL, DELIMITERS);
+		}
+		tokens[column_count] = NULL;
+
+		if(column_count>=3 && strcmp(tokens[2],"Cell_Type:") == 0)
+		{
+			gatepins_count = gatepins_count + (column_count - 13)/2;
+			gatepins_count++;
+		}
+		column_count = 0;
+
+	}
+	
+	printf("gatepins_count = %d\n",gatepins_count);
+	free(copy_line);
+	free(line);
+
+	return;
+}
+
+// This function counts the number of different library cells //
+void count_library_cells(FILE *fp)
+{
+	char *line = NULL;
+	char *copy_line = NULL;
+	char *token = NULL;
+	char* tokens[LINE_MAX] = {NULL};
+	size_t length = 0;
+	int column_count = 0;
+	int i = 0;
+
+	while((getline(&line, &length, fp)) != -1)
+	{
+		copy_line = strdup(line);
+		token = strtok(copy_line, DELIMITERS);
+		while (token != NULL && column_count <  LINE_MAX -1)
+		{
+			tokens[column_count++] = token;
+			token = strtok(NULL, DELIMITERS);
+		}
+		tokens[column_count] = NULL;
+
+		if(column_count>=3 && strcmp(tokens[2],"Cell_Type:") == 0)
+		{
+			for(i=0; i<100; i++)
+			{
+				if(library_cells[i] == NULL)
+				{
+					library_cells[i] = strdup(tokens[3]);
+					lib_count++;
+					break;
+				}
+				else if(strcmp(library_cells[i],tokens[3]) == 0)
+				{
+					break;
+				}
+			}
+		}
+		column_count = 0;
+
+	}
+	printf("lib_count = %d\n",lib_count);
+	
+	free(copy_line);
+	free(line);
+
+	return;
 }
 
 
@@ -57,9 +147,13 @@ void parse_design_file(FILE *fp)
 	int first_token = 0;
 
     count_components(fp);
+	rewind(fp);
+	count_gatepins(fp);
+	rewind(fp);
+	count_library_cells(fp);
 	create_comp_hash_table(component_count);
-	create_lib_hash_table(component_count);
-	create_gatepins_hash_table(component_count);
+	create_lib_hash_table(gatepins_count);
+	create_gatepins_hash_table(lib_count);
 	rewind(fp);
 
 	for(times_parsing = 0; times_parsing < 2; times_parsing++)

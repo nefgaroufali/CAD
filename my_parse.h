@@ -30,5 +30,6 @@ void parse_comp_line(char *line);
 void parse_io_line(char *line);
 void parse_comp1(char *tokens[], int token_count);
 void parse_comp2(char *tokens[], int token_count);
+void parse_gatepins(char *tokens[], int token_count);
 
 #endif
