@@ -65,6 +65,7 @@ void count_gatepins(FILE *fp)
 	{
 		copy_line = strdup(line);
 		token = strtok(copy_line, DELIMITERS);
+		
 		while (token != NULL && column_count <  LINE_MAX -1)
 		{
 			tokens[column_count++] = token;
@@ -78,11 +79,12 @@ void count_gatepins(FILE *fp)
 			gatepins_count++;
 		}
 		column_count = 0;
+		free(copy_line);
 
 	}
 	
 	printf("gatepins_count = %d\n",gatepins_count);
-	free(copy_line);
+	//free(copy_line);
 	free(line);
 
 	return;
@@ -103,6 +105,7 @@ void count_library_cells(FILE *fp)
 	{
 		copy_line = strdup(line);
 		token = strtok(copy_line, DELIMITERS);
+		
 		while (token != NULL && column_count <  LINE_MAX -1)
 		{
 			tokens[column_count++] = token;
@@ -127,11 +130,12 @@ void count_library_cells(FILE *fp)
 			}
 		}
 		column_count = 0;
+		free(copy_line);
 
 	}
 	printf("lib_count = %d\n",lib_count);
 	
-	free(copy_line);
+	//free(copy_line);
 	free(line);
 
 	return;
@@ -152,8 +156,8 @@ void parse_design_file(FILE *fp)
 	rewind(fp);
 	count_library_cells(fp);
 	create_comp_hash_table(component_count);
-	create_lib_hash_table(gatepins_count);
-	create_gatepins_hash_table(lib_count);
+	create_lib_hash_table(lib_count);
+	create_gatepins_hash_table(gatepins_count);
 	rewind(fp);
 
 	for(times_parsing = 0; times_parsing < 2; times_parsing++)
@@ -178,6 +182,7 @@ void parse_design_file(FILE *fp)
 					continue;
 			}
 		}
+		rewind(fp);
 	}
 	
 	fclose(fp);
@@ -224,91 +229,34 @@ int check_first_token(char *string)
 
 	return SUCCESS; 
 }
-/* 
-void parse_io_line(char *line)
+
+/* void parse_io_line(char *line)
 {
-	const char location[] = "Location:";
-	const char ccs[] = "CCs:";
-
+	char *tokens[LINE_MAX];
 	char *token = NULL;
-	char *name = NULL;
+    int token_count = 0;
 
-	double x = 0;
-	double y = 0;
-
-	// Ignore first token, "IO:"
+	// Ignore first token, "Component:"
 	token = strtok(line, DELIMITERS);
-
-	token = strtok(NULL, DELIMITERS);
-	if (token == NULL)
-	{
-		printf(RED"Syntax Error!\n"NRM);
-		exit(1);
-	}
-	name = strdup(token);
-
-	token = strtok(NULL, DELIMITERS);
-	if (token == NULL)
-	{
-		printf(RED"Syntax Error!\n"NRM);
-		exit(1);
-	}
-
-	// If token is location, the its the initial definition of the IO pin
-	if (!strcmp(token, location))
-	{
+    while(token != NULL)
+    {
+        tokens[token_count++] = token;
 		token = strtok(NULL, DELIMITERS);
-		if (token == NULL)
-		{
-			printf(RED"Syntax Error!\n"NRM);
-			exit(1);
-		}
-		x = atof(token);
+        //token_count++;
+    }
 
-		token = strtok(NULL, DELIMITERS);
-		if (token == NULL)
-		{
-			printf(RED"Syntax Error!\n"NRM);
-			exit(1);
-		}
-		y = atof(token);
-		
-		token = strtok(NULL, DELIMITERS);
-		if (token != NULL)
-		{
-			printf(RED"Syntax Error!\n"NRM);
-			exit(1);
-		}
+	if(!strcmp(tokens[2],"CCs:") && times_parsing == 2)
+    {
+        parse_io(tokens, token_count);
+    }
+} */
 
-		insert_io(name, x, y);
-		return;
-	}
-
-	// If token is ccs, then its the connections of the IO pin
-	// If not its syntax error
-	if (strcmp(token, ccs))
-	{
-		printf(RED"Syntax Error!\n"NRM);
-		exit(1);
-	}
-
-	//  Check for connections
-	token = strtok(NULL, DELIMITERS);
-	if (token == NULL)
-		return;
-
-	insert_io_net(strdup(name), strdup(token));
-
-	token = strtok(NULL, DELIMITERS);
+/* void parse_io(char *tokens[], int token_count)
+{
+	char *io_name = NULL;
 	
-	// It is not a must to have a connection
-	while (token != NULL)
-	{
-		insert_io_net(strdup(name), strdup(token));
-		token = strtok(NULL, DELIMITERS);
-	}
-}
- */
+} */
+
 
 
 void parse_comp_line(char *line)
@@ -334,10 +282,14 @@ void parse_comp_line(char *line)
     {
         parse_comp2(tokens, token_count);
     }
-	/* else if(!strcmp(tokens[2],"Cell_Type:") && times_parsing == 1)
+	else if(!strcmp(tokens[2],"Cell_Type:") && times_parsing == 1)
 	{
-		parse_gatepins(tokens, token_count);
-	} */
+		parse_gatepins1(tokens, token_count);
+	}
+	else if(!strcmp(tokens[2],"Output") && times_parsing == 1)
+    {
+        parse_gatepins2(tokens, token_count);
+    }
 }
 
 void parse_comp1(char *tokens[], int token_count)
@@ -389,7 +341,7 @@ void parse_comp2(char *tokens[], int token_count)
 	free(function);
 }
 
-/* void parse_gatepins(char *tokens[], int token_count)
+void parse_gatepins1(char *tokens[], int token_count)
 {
 	char *gatepin_name = NULL;
 	char *comp_name = NULL;
@@ -397,29 +349,102 @@ void parse_comp2(char *tokens[], int token_count)
 	struct component *component = NULL;
 	struct lib_hash *lib = NULL;
 	struct gatepins *gatepin = NULL;
-} */
+	//char** connections_names = NULL;
+	int j = 0;
 
-/* 
-int main(int argc, char *argv[])
+	comp_name = strdup(tokens[1]);
+    lib_name = strdup(tokens[3]);
+	
+	component = find_component(comp_name);
+	lib = find_lib_hash(lib_name);
+
+	// allocate memory for the gatepin name //
+	gatepin_name = malloc(strlen(tokens[11]) + strlen(tokens[12]) + 1);
+	gatepin_name = strcpy(gatepin_name, tokens[11]);
+	gatepin_name = strcat(gatepin_name, tokens[12]);
+
+	gatepin = create_gatepins(gatepin_name, component, lib, NULL, NULL, 1);
+	create_component(comp_name, gatepin, lib);
+
+	for(int i=13; i<token_count; i=i+2)
+	{
+		struct gatepins *connections = NULL;
+		char *connections_names = NULL;
+		
+		connections_names = malloc(strlen(tokens[i]) + strlen(tokens[i+1]) + 1);
+		connections_names = strcpy(connections_names, tokens[i]);
+		connections_names = strcat(connections_names, tokens[i+1]);
+
+		connections = create_gatepins(connections_names, find_component(tokens[i]), NULL, NULL, NULL, 0);
+		create_gatepins(gatepin_name, component, NULL, connections, NULL, 1);
+		create_component(tokens[i], connections, lib);
+		free(connections_names);
+		j++;
+	}
+
+
+	free(gatepin_name);
+	free(comp_name);
+	free(lib_name);
+	/* for(int i=0; i<(token_count - 13)/2; i++)
+	{
+		free(connections_names);
+	}
+	 */
+
+}
+
+
+void parse_gatepins2(char *tokens[], int token_count)
 {
-	FILE *fp = NULL;
+	char *gatepin_name = NULL;
+	char *comp_name = NULL;
+	char *lib_name = NULL;
+	struct component *component = NULL;
+	struct lib_hash *lib = NULL;
+	//struct gatepins *gatepin = NULL;
+	char *function = NULL;
+	char* output_pin = NULL;
+	char* output_pin_name = NULL;
+	int i = 0;
+	int length_function = 0;
 
-	if (argc != 2)
+	comp_name = malloc(sizeof(char) * strlen(tokens[1]) + 1 -1); // +1 for '\0' -1 for ','
+	strncpy(comp_name,tokens[1], strlen(tokens[1]) - 1); // -1 for ','
+	comp_name[strlen(tokens[1]) - 1] = '\0';
+	component = find_component(comp_name);
+	lib = component->lib_cell;
+
+	output_pin = malloc(strlen(tokens[4]) -1 + 1); // -1 for the ',' +1 for \0 //
+	strncpy(output_pin,tokens[4], strlen(tokens[4]) - 1);
+	output_pin[strlen(tokens[4]) - 1] = '\0';
+	output_pin_name = malloc(sizeof(char) * (strlen(output_pin) + 3) + 1);
+	sprintf(output_pin_name, "(/%s)", output_pin);
+
+	// allocate memory for the gatepin name //
+	gatepin_name = malloc(strlen(comp_name) + strlen(output_pin_name) + 1);
+	gatepin_name = strcpy(gatepin_name, comp_name);
+	gatepin_name = strcat(gatepin_name, output_pin_name);
+
+	for(i=7; i<token_count; i++)
 	{
-		printf(RED"Usage: %s <design_file>\n"NRM, argv[0]);
-		exit(1);
+		length_function = length_function + strlen(tokens[i]);
 	}
+    function = malloc(length_function + 1);
+    function = strcpy(function, tokens[7]);
+    for(i=8; i<token_count; i++)
+    {
+        function = strcat(function, tokens[i]);
+    }
 
-	fp = fopen(argv[1], "r");
-	if (fp == NULL)
-	{
-		printf(RED"Error: %s\n"NRM, strerror(errno));
-		exit(1);
-	}
+	find_gatepins(gatepin_name);
+	create_gatepins(gatepin_name, component, lib, NULL, function, 1);
 
-	parse_design_file(fp);
-	print_comp_hash_table(&comp_hash_table);
-	print_lib_hash_table(&lib_hash_table);
+	free(gatepin_name);
+	free(comp_name);
+	free(function);
+	free(lib_name);
+	free(output_pin);
+	free(output_pin_name);
+}
 
-	return 0;
-} */

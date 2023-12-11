@@ -26,9 +26,9 @@ int init_interpreter()
 	Tcl_CreateObjCommand(interp_nef, "read_design", read_design, NULL, NULL);
 	Tcl_CreateObjCommand(interp_nef, "list_components", list_components, NULL, NULL);
 	//Tcl_CreateObjCommand(interp_nef, "list_IOs", list_IOs, NULL, NULL);
-	//Tcl_CreateObjCommand(interp_nef, "report_component_function", report_component_function, NULL, NULL);
+	Tcl_CreateObjCommand(interp_nef, "report_component_function", report_component_function, NULL, NULL);
 	Tcl_CreateObjCommand(interp_nef, "report_component_type", report_component_type, NULL, NULL);
-	//Tcl_CreateObjCommand(interp_nef, "list_component_CCS", list_component_CCS, NULL, NULL);
+	Tcl_CreateObjCommand(interp_nef, "list_component_CCS", list_component_CCS, NULL, NULL);
 	//Tcl_CreateObjCommand(interp_nef, "list_IO_CCS", list_IO_CCS, NULL, NULL);
 
 	if (Tcl_Init(interp_nef) == TCL_ERROR)
@@ -193,6 +193,7 @@ int read_design(ClientData clientdata, Tcl_Interp *interp, int argc, Tcl_Obj *co
 
 	print_comp_hash_table(&comp_hash_table);
 	print_lib_hash_table(&lib_hash_table);
+	print_gatepins_hash_table(&gatepins_hash_table);
 
 	return TCL_OK;
 }
@@ -239,7 +240,94 @@ int report_component_type(ClientData clientdata, Tcl_Interp *interp, int argc, T
 
 	// print the component name and the component type
 	printf("%s %s\n", component->comp_name, component->lib_cell->lib_cell_name);
+	printf("\n");
 
+	return TCL_OK;
+}
+
+int report_component_function(ClientData clientdata, Tcl_Interp *interp, int argc, Tcl_Obj *const argv[])
+{
+	char *comp_name;
+	struct component *component = NULL;
+
+	// check if the hash tables are null
+	if(comp_hash_table.table == NULL)
+	{
+		fprintf(stderr, RED"!!!Error: No components in the design. !!! Must first call read_design\n"NRM);
+		return TCL_OK;
+	}
+	
+	// there is one arg, the component name
+	if(argc != 2)
+	{
+		fprintf(stderr, RED"!!!Error: Wrong number of arguments\n"NRM);
+		fprintf(stderr, NRM"Expected: report_component_function <component_name>\n"NRM);
+		return TCL_OK;
+	}
+
+	comp_name = Tcl_GetString(argv[1]);
+	component = find_component(comp_name);
+
+	printf("Component: %s, Function(s): \n", component->comp_name);
+
+	// print the component name and the component function
+	int i=0;
+	while(component->gatepins_array[i] != NULL)
+	{
+		if(component->gatepins_array[i]->io == 1)
+		{
+			printf("%s\n", component->gatepins_array[i]->function);
+		}
+		i++;
+	}
+
+	printf("\n");
+
+	return TCL_OK;
+}
+
+int list_component_CCS(ClientData clientdata, Tcl_Interp *interp, int argc, Tcl_Obj *const argv[])
+{
+	char *comp_name;
+	struct component *component = NULL;
+
+	// check if the hash tables are null
+	if(comp_hash_table.table == NULL)
+	{
+		fprintf(stderr, RED"!!!Error: No components in the design. !!! Must first call read_design\n"NRM);
+		return TCL_OK;
+	}
+	
+	// there is one arg, the component name
+	if(argc != 2)
+	{
+		fprintf(stderr, RED"!!!Error: Wrong number of arguments\n"NRM);
+		fprintf(stderr, NRM"Expected: list_component_CCS <component_name>\n"NRM);
+		return TCL_OK;
+	}
+
+	comp_name = Tcl_GetString(argv[1]);
+	component = find_component(comp_name);
+
+	printf("Component: %s, CCS: \n", component->comp_name);
+
+	// print the component name and the component CCS
+	int i=0;
+	int j=0;
+	while(component->gatepins_array[i] != NULL)
+	{
+		if(component->gatepins_array[i]->io == 1)
+		{
+			while(component->gatepins_array[i]->connections[j] != NULL)
+			{
+				printf("%s\n", component->gatepins_array[i]->connections[j]->component->comp_name);
+				j++;
+			}
+		}
+		i++;
+	}
+
+	printf("\n");
 
 	return TCL_OK;
 }

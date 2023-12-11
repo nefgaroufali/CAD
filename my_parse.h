@@ -28,8 +28,10 @@ void parse_design_file(FILE *fp);
 int check_first_token(char *token);
 void parse_comp_line(char *line);
 void parse_io_line(char *line);
+void parse_io(char *tokens[], int token_count);
 void parse_comp1(char *tokens[], int token_count);
 void parse_comp2(char *tokens[], int token_count);
-void parse_gatepins(char *tokens[], int token_count);
+void parse_gatepins1(char *tokens[], int token_count);
+void parse_gatepins2(char *tokens[], int token_count);
 
 #endif

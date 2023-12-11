@@ -8,6 +8,8 @@
 #define BLU  "\x1B[34m"		// Blue Color
 #define MAG  "\x1B[35m"		// Magenta Color
 
+#define IO_ARRAY_SIZE 300
+
 // thestructure of the component //
 struct component
 {
@@ -27,6 +29,7 @@ struct gatepins
     struct gatepins** connections;
     char* function;
     int io; // 0 for input, 1 for output
+    int general_io; // 0 for not general IO, 1 for general IO
     struct gatepins* next;
 };
 
@@ -71,16 +74,17 @@ struct lib_hash_table
 extern struct comp_hash_table comp_hash_table;
 extern struct gatepins_hash_table gatepins_hash_table;
 extern struct lib_hash_table lib_hash_table;
+extern struct io io_array[IO_ARRAY_SIZE];
 
 // Function declarations //
-struct component* create_component(char* comp_name, struct gatepins** gatepins_array, struct lib_hash* lib_cell);
+struct component* create_component(char* comp_name, struct gatepins* gatepins_array, struct lib_hash* lib_cell);
 void create_comp_hash_table(int size);
 void insert_component(struct component* comp);
 struct component* find_component(char* comp_name);
 void print_comp_hash_table(struct comp_hash_table* ht);
 void free_comp_hash_table(struct comp_hash_table* ht);
 
-struct gatepins* create_gatepins(char* gatepin_name, struct component* component, struct lib_hash* lib_cell, struct gatepins** connections, char* function, int io);
+struct gatepins* create_gatepins(char* gatepin_name, struct component* component, struct lib_hash* lib_cell, struct gatepins* connections, char* function, int io);
 void create_gatepins_hash_table(int size);
 void insert_gatepins(struct gatepins* gatepin);
 struct gatepins* find_gatepins(char* gatepin_name);

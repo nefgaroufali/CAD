@@ -6,7 +6,7 @@
 #include "my_parse.h"
 
 #define MAX_NAME_LENGTH 256
-#define MAX_ARRAY_SIZE 512
+#define MAX_ARRAY_SIZE 1000
 #define MAX_VAR_LENGTH 256
 #define MAX_VARIABLES 256
 
@@ -146,7 +146,7 @@ struct lib_hash* find_lib_hash(char* lib_cell_name)
 //********************************************************************
 
 // This function creates a component //
-struct component* create_component(char* comp_name, struct gatepins** gatepins_array, struct lib_hash* lib_cell)
+struct component* create_component(char* comp_name, struct gatepins* gatepins, struct lib_hash* lib_cell)
 {
     // variables //
     struct component* comp;
@@ -158,6 +158,16 @@ struct component* create_component(char* comp_name, struct gatepins** gatepins_a
     // if the component exists, return it //
     if(comp != NULL)
     {
+        // if gatepins is not NULL, add it to the array //
+        if(gatepins != NULL)
+        {
+            while(comp->gatepins_array[i] != NULL)
+            {
+                i++;
+            }
+            comp->gatepins_array[i] = gatepins;
+        }
+
         return comp;
     }
 
@@ -170,16 +180,11 @@ struct component* create_component(char* comp_name, struct gatepins** gatepins_a
     // copy the component name //
     strcpy(comp->comp_name, comp_name);
 
-    // assign the gatepins_array and connections pointers directly //
+    // allocate memory for the gatepins //
     comp->gatepins_array = malloc(sizeof(struct gatepins*) * MAX_ARRAY_SIZE);
     for(int i = 0; i < MAX_ARRAY_SIZE; i++)
     {
         comp->gatepins_array[i] = NULL;
-    }
-    while(gatepins_array != NULL && gatepins_array[i] != NULL )
-    {
-        comp->gatepins_array[i] = gatepins_array[i];
-        i++;
     }
 
     // assign the lib_cell pointer directly //
@@ -195,7 +200,7 @@ struct component* create_component(char* comp_name, struct gatepins** gatepins_a
 
 
 // This function creates a gatepin //
-struct gatepins* create_gatepins(char* gatepin_name, struct component* component, struct lib_hash* lib_cell, struct gatepins** connections, char* function, int io)
+struct gatepins* create_gatepins(char* gatepin_name, struct component* component, struct lib_hash* lib_cell, struct gatepins* connections, char* function, int io)
 {
     int i=0;
 
@@ -218,8 +223,25 @@ struct gatepins* create_gatepins(char* gatepin_name, struct component* component
         }
         if(function != NULL)
         {
-            gatepin->function = function;
+            gatepin->function = malloc(strlen(function) + 1);
+            strcpy(gatepin->function, function);
         }
+        else
+        {
+            gatepin->function = NULL;
+        }
+
+        i = 0;
+        if(connections != NULL)
+        {
+            while(gatepin->connections[i] != NULL)
+            {
+                i++;
+            }
+            gatepin->connections[i] = connections;
+        }
+        gatepin->io = io;
+
         return gatepin;
     }
 
@@ -232,9 +254,23 @@ struct gatepins* create_gatepins(char* gatepin_name, struct component* component
 
     // assign the component and lib_cell pointers directly //
     gatepin->component = malloc(sizeof(struct component));
-    gatepin->component = component;
+    if(component != NULL)
+    {
+        gatepin->component = component;
+    }
+    else
+    {
+        gatepin->component = NULL;
+    }
     gatepin->lib_cell = malloc(sizeof(struct lib_hash));
-    gatepin->lib_cell = lib_cell;
+    if(lib_cell != NULL)
+    {
+        gatepin->lib_cell = lib_cell;
+    }
+    else
+    {
+        gatepin->lib_cell = NULL;
+    }
 
     // allocate memory for the connections //
     gatepin->connections = malloc(sizeof(struct gatepins*) * MAX_ARRAY_SIZE);
@@ -242,22 +278,7 @@ struct gatepins* create_gatepins(char* gatepin_name, struct component* component
     {
         gatepin->connections[i] = NULL;
     }
-    while(connections != NULL && connections[i] != NULL)
-    {
-        gatepin->connections[i] = connections[i];
-        i++;
-    }
-
-    // allocate memory for the function //
-    if(function != NULL)
-    {
-        gatepin->function = malloc(strlen(function) + 1);
-        strcpy(gatepin->function, function);
-    }
-    else
-    {
-        gatepin->function = NULL;
-    }
+    gatepin->function = NULL;
 
     // copy the io //
     gatepin->io = io;
@@ -447,7 +468,7 @@ void print_gatepins_hash_table(struct gatepins_hash_table* ht)
         gatepin = ht->table[i];
         while(gatepin != NULL)
         {
-            printf("Gatepin name: %s\n", gatepin->gatepin_name);
+            printf("\nGatepin name: %s\n", gatepin->gatepin_name);
             if(gatepin->component != NULL)
             {
                 printf("Gatepin component: %s\n", gatepin->component->comp_name);
@@ -540,6 +561,7 @@ void free_comp_hash_table(struct comp_hash_table* ht)
             comp = comp->next;
             free(temp->comp_name);
             free(temp->gatepins_array);
+            free(temp->lib_cell);
             free(temp);
         }
     }
@@ -561,6 +583,7 @@ void free_gatepins_hash_table(struct gatepins_hash_table* ht)
             temp = gatepin;
             gatepin = gatepin->next;
             free(temp->gatepin_name);
+            free(temp->component);
             free(temp->connections);
             free(temp->function);
             free(temp);
