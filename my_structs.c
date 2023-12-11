@@ -139,6 +139,20 @@ struct lib_hash* find_lib_hash(char* lib_cell_name)
     return NULL;
 }
 
+struct io* find_io(char* io_name)
+{
+    int i = 0;
+    while(io_array[i].io_name != NULL)
+    {
+        if(!strcmp(io_array[i].io_name, io_name))
+        {
+            return &io_array[i];
+        }
+        i++;
+    }
+    return NULL;
+}
+
 //********************************************************************
 //
 // Create cell functions
@@ -348,6 +362,58 @@ struct lib_hash* create_lib_hash(char* lib_cell_name, char** pins)
 }
 
 
+struct io* create_io(char* io_name, struct gatepins* connections, int io)
+{
+    int i = 0;
+    struct io* io_ptr;
+
+    io_ptr = find_io(io_name);
+
+    i = 0;
+    if(io_ptr != NULL)
+    {
+        if(connections != NULL)
+        {
+            while(io_ptr->connections[i] != NULL)
+            {
+                i++;
+            }
+            io_ptr->connections[i] = connections;
+        }
+
+        io_ptr->io = io;
+        return io_ptr;
+    }
+
+    io_ptr = malloc(sizeof(struct io));
+    io_ptr->io_name = malloc(strlen(io_name) + 1);
+    strcpy(io_ptr->io_name, io_name);
+
+    io_ptr->connections = malloc(sizeof(struct gatepins*) * IO_ARRAY_SIZE);
+    for(int i = 0; i < IO_ARRAY_SIZE; i++)
+    {
+        io_ptr->connections[i] = NULL;
+    }
+
+    i=0;
+    if(connections != NULL)
+    {
+        while(io_ptr->connections[i] != NULL)
+        {
+            i++;
+        }
+        io_ptr->connections[i] = connections;
+    }
+
+    io_ptr->io = io;
+
+    //io_ptr->next = NULL;
+
+    insert_io(io_ptr);
+
+    return io_ptr;
+}
+
 //********************************************************************
 //
 // Insert cell functions
@@ -422,6 +488,16 @@ void insert_lib_hash(struct lib_hash* lib_cell)
         }
         lib_cell_ptr->next = lib_cell;
     }
+}
+
+void insert_io(struct io* io_ptr)
+{
+    int i = 0;
+    while(io_array[i].io_name != NULL)
+    {
+        i++;
+    }
+    io_array[i] = *io_ptr;
 }
 
 
@@ -539,6 +615,27 @@ void print_lib_hash_table(struct lib_hash_table* ht)
     }
 }
 
+void print_io_array(struct io* io_array)
+{
+    int i = 0;
+    while(io_array[i].io_name != NULL)
+    {
+        printf("IO name: %s\n", io_array[i].io_name);
+        printf("IO connections: ");
+        for(int j = 0; j < IO_ARRAY_SIZE; j++)
+        {
+            if(io_array[i].connections[j] != NULL)
+            {
+                printf("%s ", io_array[i].connections[j]->gatepin_name);
+            }
+        }
+        printf("\n");
+        printf("IO io: %d\n", io_array[i].io);
+        printf("\n");
+        i++;
+    }
+}
+
 
 //********************************************************************
 //
@@ -561,7 +658,7 @@ void free_comp_hash_table(struct comp_hash_table* ht)
             comp = comp->next;
             free(temp->comp_name);
             free(temp->gatepins_array);
-            free(temp->lib_cell);
+            //free(temp->lib_cell);
             free(temp);
         }
     }
@@ -582,9 +679,10 @@ void free_gatepins_hash_table(struct gatepins_hash_table* ht)
         {
             temp = gatepin;
             gatepin = gatepin->next;
-            free(temp->gatepin_name);
-            free(temp->component);
-            free(temp->connections);
+            //free(temp->gatepin_name);
+            //free(temp->component);
+            //free(temp->lib_cell);
+            //free(temp->connections);
             free(temp->function);
             free(temp);
         }
@@ -612,6 +710,17 @@ void free_lib_hash_table(struct lib_hash_table* ht)
         }
     }
     free(ht->table);
+}
+
+void free_io_array(struct io* io_array)
+{
+    int i = 0;
+    while(io_array[i].io_name != NULL)
+    {
+        free(io_array[i].io_name);
+        free(io_array[i].connections);
+        i++;
+    }
 }
 
 

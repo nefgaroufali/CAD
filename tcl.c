@@ -25,11 +25,11 @@ int init_interpreter()
 	// define commands for the parsing of the file
 	Tcl_CreateObjCommand(interp_nef, "read_design", read_design, NULL, NULL);
 	Tcl_CreateObjCommand(interp_nef, "list_components", list_components, NULL, NULL);
-	//Tcl_CreateObjCommand(interp_nef, "list_IOs", list_IOs, NULL, NULL);
+	Tcl_CreateObjCommand(interp_nef, "list_IOs", list_IOs, NULL, NULL);
 	Tcl_CreateObjCommand(interp_nef, "report_component_function", report_component_function, NULL, NULL);
 	Tcl_CreateObjCommand(interp_nef, "report_component_type", report_component_type, NULL, NULL);
 	Tcl_CreateObjCommand(interp_nef, "list_component_CCS", list_component_CCS, NULL, NULL);
-	//Tcl_CreateObjCommand(interp_nef, "list_IO_CCS", list_IO_CCS, NULL, NULL);
+	Tcl_CreateObjCommand(interp_nef, "list_IO_CCS", list_IO_CCS, NULL, NULL);
 
 	if (Tcl_Init(interp_nef) == TCL_ERROR)
 	{
@@ -194,6 +194,7 @@ int read_design(ClientData clientdata, Tcl_Interp *interp, int argc, Tcl_Obj *co
 	print_comp_hash_table(&comp_hash_table);
 	print_lib_hash_table(&lib_hash_table);
 	print_gatepins_hash_table(&gatepins_hash_table);
+	print_io_array(&io_array);
 
 	return TCL_OK;
 }
@@ -321,6 +322,64 @@ int list_component_CCS(ClientData clientdata, Tcl_Interp *interp, int argc, Tcl_
 			while(component->gatepins_array[i]->connections[j] != NULL)
 			{
 				printf("%s\n", component->gatepins_array[i]->connections[j]->component->comp_name);
+				j++;
+			}
+		}
+		i++;
+	}
+
+	printf("\n");
+
+	return TCL_OK;
+}
+
+int list_IOs(ClientData clientdata, Tcl_Interp *interp, int argc, Tcl_Obj *const argv[])
+{
+	// there are no args, just print all the IOs names
+	for(int i = 0; i < IO_ARRAY_SIZE; i++)
+	{
+		if(io_array[i].io_name != NULL)
+		{
+			printf("%s\n", io_array[i].io_name);
+		}
+	}
+
+	return TCL_OK;
+}
+
+int list_IO_CCS(ClientData clientdata, Tcl_Interp *interp, int argc, Tcl_Obj *const argv[])
+{
+	char *io_name;
+	int i = 0;
+	int j = 0;
+
+	// check if the hash tables are null
+	if(io_array == NULL)
+	{
+		fprintf(stderr, RED"!!!Error: No components in the design. !!! Must first call read_design\n"NRM);
+		return TCL_OK;
+	}
+	
+	// there is one arg, the component name
+	if(argc != 2)
+	{
+		fprintf(stderr, RED"!!!Error: Wrong number of arguments\n"NRM);
+		fprintf(stderr, NRM"Expected: list_IO_CCS <IO_name>\n"NRM);
+		return TCL_OK;
+	}
+
+	io_name = Tcl_GetString(argv[1]);
+
+	printf("IO: %s, CCS: \n", io_name);
+
+	// print the component name and the component CCS
+	while(io_array[i].io_name != NULL)
+	{
+		if(strcmp(io_array[i].io_name, io_name) == 0)
+		{
+			while(io_array[i].connections[j] != NULL)
+			{
+				printf("%s\n", io_array[i].connections[j]->component->comp_name);
 				j++;
 			}
 		}

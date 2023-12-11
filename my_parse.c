@@ -13,6 +13,8 @@ int gatepins_count = 0;
 int lib_count = 0;
 int times_parsing = 0;
 char *library_cells[100] = {NULL};
+struct io io_array[IO_ARRAY_SIZE] = {NULL};
+//char *io_names[100] = {NULL}; 
 
 
 // This function counts the lines of the file that start with word "Component" //
@@ -160,7 +162,7 @@ void parse_design_file(FILE *fp)
 	create_gatepins_hash_table(gatepins_count);
 	rewind(fp);
 
-	for(times_parsing = 0; times_parsing < 2; times_parsing++)
+	for(times_parsing = 0; times_parsing < 3; times_parsing++)
 	{
 		while((getline(&line, &length, fp)) != -1)
 		{
@@ -175,7 +177,7 @@ void parse_design_file(FILE *fp)
 				case IS_ROW:
 					continue;
 				case IS_IO:
-					//parse_io_line(line);
+					parse_io_line(line);
 					continue;
 				case IS_COMPONENT:
 					parse_comp_line(line);
@@ -230,7 +232,7 @@ int check_first_token(char *string)
 	return SUCCESS; 
 }
 
-/* void parse_io_line(char *line)
+void parse_io_line(char *line)
 {
 	char *tokens[LINE_MAX];
 	char *token = NULL;
@@ -249,13 +251,58 @@ int check_first_token(char *string)
     {
         parse_io(tokens, token_count);
     }
-} */
+}
 
-/* void parse_io(char *tokens[], int token_count)
+void parse_io(char *tokens[], int token_count)
 {
 	char *io_name = NULL;
-	
-} */
+	//int i = 0;
+	int j = 0;
+	int k = 0;
+	int flag_output = 0;
+
+	io_name = strdup(tokens[1]);
+
+	if(token_count > 2)
+	{
+		for(int i=3; i<token_count; i=i+2)
+		{
+			struct gatepins *connections = NULL;
+			char *connections_names = NULL;
+			
+			connections_names = malloc(strlen(tokens[i]) + strlen(tokens[i+1]) + 1);
+			connections_names = strcpy(connections_names, tokens[i]);
+			connections_names = strcat(connections_names, tokens[i+1]);
+
+			connections = find_gatepins(connections_names);
+			if(connections == NULL)
+			{
+				connections = create_gatepins(connections_names, find_component(tokens[i]), NULL, NULL, NULL, 0);
+			}
+			else{
+				if(connections->io == 1){
+					flag_output = 1;
+				}
+			}
+			
+			create_io(io_name, connections,0);
+			
+			free(connections_names);
+			j++;
+		}
+	}
+	if(flag_output == 1)
+	{
+		create_io(io_name, NULL, 1);
+	}
+	else
+	{
+		create_io(io_name, NULL, 0);
+	}
+
+	free(io_name);
+
+}
 
 
 

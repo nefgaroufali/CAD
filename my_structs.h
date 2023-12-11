@@ -29,7 +29,7 @@ struct gatepins
     struct gatepins** connections;
     char* function;
     int io; // 0 for input, 1 for output
-    int general_io; // 0 for not general IO, 1 for general IO
+    //int general_io; // 0 for not general IO, 1 for general IO
     struct gatepins* next;
 };
 
@@ -98,8 +98,15 @@ struct lib_hash* find_lib_hash(char* lib_cell_name);
 void print_lib_hash_table(struct lib_hash_table* ht);
 void free_lib_hash_table(struct lib_hash_table* ht);
 
+struct io* create_io(char* io_name, struct gatepins* connections, int io);
+void insert_io(struct io* io);
+struct io* find_io(char* io_name);
+void print_io_array();
+void free_io_array(struct io* io_array);
+
 int make_data_structures(char** tokens, int count, int flag);
 char**  extractVariables(const char* function);
 int isVariableChar(char c);
+
 
 #endif

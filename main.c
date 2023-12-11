@@ -90,6 +90,7 @@ int main(int argc, char* argv[])
             free_comp_hash_table(&comp_hash_table);
             free_gatepins_hash_table(&gatepins_hash_table);
             free_lib_hash_table(&lib_hash_table);
+            free_io_array(io_array);
             return EXIT_SUCCESS;
         }
         else if (strcmp(command, "history") == 0)
